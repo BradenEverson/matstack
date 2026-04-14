@@ -6,7 +6,9 @@ pub const Tensor = struct {
     /// An UNOWNED look into the data
     /// the VM truly owns this in an arena
     /// like structure
-    data: []const f32,
+    ///
+    /// We trust shape fully with the dimensions of this data
+    data: [*]const f32,
 
     /// The shape in row-first order
     shape: []usize,
