@@ -13,7 +13,7 @@ A MatStack program consists of
 ```
 
 ## Size Header
-Not much to say here, just a 32-bit LE unsigned size of the constant pool size
+Not much to say here, just a 32-bit LE unsigned size of the constant pool in bytes
 
 ## Constant Pool
 From the size provided, the next `size` bytes belong to the constant pool. A constant in the constant pool is described as:
