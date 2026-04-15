@@ -2,24 +2,22 @@
 
 const std = @import("std");
 
-pub const Tensor = struct {
-    /// An UNOWNED look into the data
-    /// the VM truly owns this in an arena
-    /// like structure
-    ///
-    /// We trust shape fully with the dimensions of this data
-    data: [*]const f32,
+/// An UNOWNED look into the data
+/// the VM truly owns this in an arena
+/// like structure
+///
+/// We trust shape fully with the dimensions of this data
+data: [*]const f32,
 
-    /// The shape in row-first order
-    shape: []usize,
+/// The shape in row-first order
+shape: []usize,
 
-    /// Offset for slices into existing tensors
-    offset: usize = 0,
+/// Offset for slices into existing tensors
+offset: usize = 0,
 
-    /// for each dimension along the shape,
-    /// how many elements we move forward
-    /// flatly to get to the next index.
-    /// ex: in a 2x3 matrix, strides would
-    /// be [3, 1] to move down a row or col
-    strides: []usize,
-};
+/// for each dimension along the shape,
+/// how many elements we move forward
+/// flatly to get to the next index.
+/// ex: in a 2x3 matrix, strides would
+/// be [3, 1] to move down a row or col
+strides: []usize,
