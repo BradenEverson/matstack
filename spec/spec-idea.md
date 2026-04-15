@@ -7,9 +7,9 @@ A MatStack program consists of
 ## General Structure
 
 ```
-[[ 4 byte size header ]] -> N byte payload
-[[ N bytes of Tensor descriptors ]]
-[[ series 4-byte instructions until eof ]]
+[[ Header ]] 4-bytes
+[[ Constant Pool ]] N-bytes
+[[ Instructions ]] rest
 ```
 
 ## Size Header
