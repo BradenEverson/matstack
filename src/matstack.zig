@@ -8,6 +8,7 @@ pub const Operand = @import("operand.zig").Operand;
 pub const OperandStack = std.ArrayList(Operand);
 
 pub const VirtualMachine = struct {
+    constant_pool: []const Tensor,
     gp_registers: [32]Tensor = undefined,
     stack: OperandStack,
 };
