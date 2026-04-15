@@ -5,9 +5,10 @@ const std = @import("std");
 pub const Tensor = @import("tensor.zig");
 pub const Operand = @import("operand.zig").Operand;
 
-pub const OperandStack = std.ArrayList(Operand);
+/// Maximum operands that can be on the stack at a time
+pub const MAX_STACK_SIZE: usize = 512;
 
-pub const NUM_REGISTERS: usize = 32;
+pub const OperandStack = [MAX_STACK_SIZE]Operand;
 
 pub fn parseConstantPool(cpool_bytes: []const u8) []const Tensor {
     _ = cpool_bytes;
@@ -15,7 +16,6 @@ pub fn parseConstantPool(cpool_bytes: []const u8) []const Tensor {
 
 pub const VirtualMachine = struct {
     constant_pool: []const Tensor,
-    gp_registers: [NUM_REGISTERS]Tensor = undefined,
     stack: OperandStack,
 };
 
