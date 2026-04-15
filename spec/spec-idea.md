@@ -6,9 +6,9 @@ A MatStack program consists of
 
 ## General Structure
 
-[[ 4 byte size header ]] -> N byte payload
-[[ N bytes of Tensor descriptors ]]
-[[ series 4-byte instructions until eof ]]
+- [[ 4 byte size header ]] -> N byte payload
+- [[ N bytes of Tensor descriptors ]]
+- [[ series 4-byte instructions until eof ]]
 
 ## Size Header
 Not much to say here, just a 32-bit LE unsigned size of the constant pool size
