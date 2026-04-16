@@ -9,10 +9,11 @@ pub const Instruction = @import("instruction.zig").Instruction;
 
 /// Maximum operands that can be on the stack at a time
 pub const MAX_STACK_SIZE: usize = 512;
+pub const SCRATCH_SIZE: usize = 256;
 
 pub const OperandStack = [MAX_STACK_SIZE]Operand;
 
-pub fn parseConstantPool(alloc: Allocator, cpool_bytes: []const u8) []const Tensor {
+pub fn parseConstantPool(alloc: Allocator, cpool_bytes: []const u8) ![]const Tensor {
     _ = alloc;
     _ = cpool_bytes;
 }
@@ -21,6 +22,7 @@ pub const VirtualMachine = struct {
     constant_pool: []const Tensor,
     stack: OperandStack,
     instructions: []const Instruction,
+    scratch_area: [SCRATCH_SIZE]Operand,
 };
 
 test {
