@@ -4,12 +4,14 @@ pub const Command = enum(u8) {
     // Data processing
     nop,
     add,
+    sub,
     mul,
     matmul,
+    cmp,
 
     // Memory
     load_const,
-    /// Pops and loads the top tensor to
+    /// Clones and loads the top tensor to
     /// a provided index into the scratch
     /// area
     load_i,

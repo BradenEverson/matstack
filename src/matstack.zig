@@ -5,14 +5,18 @@ const Allocator = std.mem.Allocator;
 
 pub const Tensor = @import("tensor.zig");
 pub const OperandStack = @import("stack.zig");
-pub const Operand = @import("operand.zig").Operand;
-pub const Instruction = @import("instruction.zig").Instruction;
+pub const Instruction = @import("instruction.zig");
+
+pub const Operand = Tensor;
 
 /// How many tensor slots there are for
 /// working area memory
 pub const SCRATCH_SIZE: usize = 256;
 
-pub fn parseConstantPool(alloc: Allocator, cpool_bytes: []const u8) ![]const Tensor {
+pub fn parseConstantPool(
+    alloc: Allocator,
+    cpool_bytes: []const u8,
+) ![]const Tensor {
     _ = alloc;
     _ = cpool_bytes;
 }
@@ -20,8 +24,24 @@ pub fn parseConstantPool(alloc: Allocator, cpool_bytes: []const u8) ![]const Ten
 pub const VirtualMachine = struct {
     constant_pool: []const Tensor,
     stack: OperandStack,
+
     instructions: []const Instruction,
+    pc: usize = 0,
+
     scratch_area: [SCRATCH_SIZE]Operand,
+
+    pub fn step(vm: *VirtualMachine) !void {
+        const cmd, const extra: Instruction = vm.instructions[vm.pc];
+
+        switch (cmd) {
+            .load_const => {
+                const cpool_idx = @as(usize, extra);
+                try vm.stack.push(vm.constant_pool[cpool_idx]);
+            },
+
+            _ => {}, // TODO
+        }
+    }
 };
 
 test {
