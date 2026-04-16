@@ -24,3 +24,9 @@ From the size provided, the next `size` bytes belong to the constant pool. A con
 ```
 
 ## Instructions
+An instruction occupies 2 bytes, with the first byte being the command and the second byte being any additional information necessary for the operation. For example, loading the 5th tensor from the constant pool onto the operand stack would be encoded as:
+
+```
+[         0x00       ] [      0x05      ]
+[ LOAD_CONST command ] [ idx 5 in cpool ]
+```
