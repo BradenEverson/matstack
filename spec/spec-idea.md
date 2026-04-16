@@ -7,7 +7,7 @@ A MatStack program consists of
 ## General Structure
 
 ```
-[[ Header ]] 2-bytes
+[[ Header ]] 4-bytes
 [[ Constant Pool ]] N-bytes
 [[ Instructions ]] rest
 ```
