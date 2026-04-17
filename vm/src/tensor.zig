@@ -158,7 +158,7 @@ pub fn matmul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
 
 pub fn inPlaceRelu(self: *Tensor) void {
     for (self.data) |*val| {
-        if (val < 0) val = 0;
+        if (val.* < 0) val.* = 0;
     }
 }
 
@@ -267,4 +267,16 @@ test "W @ X^T" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 2 }, C.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 18, 17, 5, 1 }, C.data);
+}
+
+test "ReLu" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ -1, 2, 1, -80, 1, 0.1 });
+    A.inPlaceRelu();
+
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 0, 2, 1, 0, 1, 0.1 }, A.data);
 }
