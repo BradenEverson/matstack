@@ -36,15 +36,28 @@ pub const VirtualMachine = struct {
         switch (cmd) {
             .load_const => {
                 const cpool_idx = @as(usize, extra);
-                try vm.stack.push(vm.constant_pool[cpool_idx]);
+                const res = try vm.constant_pool[cpool_idx].clone(alloc);
+
+                try vm.stack.push(res);
             },
 
             .matmul => {
-                const rhs = try vm.stack.pop();
-                const lhs = try vm.stack.pop();
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
 
                 const res = lhs.matmul(rhs, alloc);
                 try vm.stack.push(res);
+            },
+
+            .add => {
+                const rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+
+                lhs.addInPlace(rhs);
+                try vm.stack.push(lhs);
             },
 
             .transpose => {

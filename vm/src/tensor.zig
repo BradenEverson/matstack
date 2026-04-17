@@ -10,21 +10,9 @@ pub const TensorError = error{
     OperandSizesDoNotAgree,
 };
 
-/// An UNOWNED look into the data
-/// the VM truly owns this in an arena
-/// like structure
-///
-/// when constructed by being passed into the `makeTensor`
-/// function, it should most definitely be an arena
-/// allocator
-///
-/// We trust shape fully with the dimensions of this data
 data: []f32,
 
 /// The shape in row-first order
-///
-/// this is also unowned, deinit
-/// will not clear it
 shape: []usize,
 
 /// Offset for slices into existing tensors
@@ -35,10 +23,13 @@ offset: usize = 0,
 /// flatly to get to the next index.
 /// ex: in a 2x3 matrix, strides would
 /// be [3, 1] to move down a row or col
-///
-/// this is also unowned, deinit
-/// will not clear it
 strides: []usize,
+
+pub fn deinit(self: *Tensor, alloc: Allocator) void {
+    alloc.free(self.data);
+    alloc.free(self.shape);
+    alloc.free(self.strides);
+}
 
 pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
     const shapeOwned = try alloc.dupe(usize, shape);
