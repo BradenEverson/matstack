@@ -67,6 +67,13 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .relu => {
+                var res = try vm.stack.pop();
+                res.inPlaceRelu();
+
+                try vm.stack.push(res);
+            },
+
             _ => {}, // TODO
         }
     }
