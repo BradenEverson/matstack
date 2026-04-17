@@ -115,6 +115,29 @@ pub fn setMany(self: *Tensor, vals: []const f32) void {
         self.data[i] = val;
 }
 
+pub fn transposeMatInPlace(self: *Tensor) !void {
+    if (self.shape.len != 2)
+        return error.InvalidShapeForOp;
+
+    const tmp = self.strides[0];
+    self.strides[0] = self.strides[1];
+    self.strides[1] = tmp;
+
+    const tmp_shape = self.shape[0];
+    self.shape[0] = self.shape[1];
+    self.shape[1] = tmp_shape;
+}
+
+pub fn transposeMat(self: *const Tensor, alloc: Allocator) !Tensor {
+    if (self.shape.len != 2)
+        return error.InvalidShapeForOp;
+
+    var copy = try self.clone(alloc);
+    try copy.transposeMatInPlace();
+
+    return copy;
+}
+
 pub fn matmul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     if (a.shape.len != 2 or b.shape.len != 2)
         return error.InvalidShapeForOp;
@@ -190,4 +213,17 @@ test "matmul" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 2 }, C.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 15, 27, 6, 7 }, C.data);
+}
+
+test "transpose" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    try A.transposeMatInPlace();
+    A.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 3, 2 }, A.shape);
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 1, 3 }, A.strides);
 }
