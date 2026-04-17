@@ -9,6 +9,7 @@ pub const Command = enum(u8) {
     matmul,
     cmp,
     transpose,
+    relu,
 
     // Memory
     load_const,

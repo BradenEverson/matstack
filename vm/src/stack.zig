@@ -11,7 +11,7 @@ pub const StackError = error{
 };
 
 sp: usize = 0,
-stack: [MAX_STACK_SIZE]Operand,
+stack: [MAX_STACK_SIZE]Operand = undefined,
 
 const Self = @This();
 
