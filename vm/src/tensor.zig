@@ -250,3 +250,21 @@ test "add" {
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, C.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 3, 7, 7, 7, 2, 8 }, C.data);
 }
+
+test "W @ X^T" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    var B: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+
+    A.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
+    B.setMany(&[_]f32{ 2, 5, 6, 7, 1, 8 });
+    try B.transposeMatInPlace();
+
+    const C = try A.matmul(B, arena.allocator());
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 2 }, C.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 18, 17, 5, 1 }, C.data);
+}
