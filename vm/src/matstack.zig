@@ -31,8 +31,7 @@ pub fn parseConstantPool(
 }
 
 pub const VmError = error{
-    NoMoreInstructions,
-    MalformedInstructioBytes,
+    MalformedInstructionBytes,
 };
 
 pub const VirtualMachine = struct {
@@ -76,7 +75,7 @@ pub const VirtualMachine = struct {
         // The rest of the bytes are 2-byte instruction pairs
         // let's make sure the rest actually is 2-byte pairs
         if (rest.len % 2 != 0)
-            return error.MalformedInstructioBytes;
+            return error.MalformedInstructionBytes;
 
         const instr_count = rest.len / 2;
         const instructions = try alloc.alloc(Instruction, instr_count);
@@ -100,9 +99,9 @@ pub const VirtualMachine = struct {
         };
     }
 
-    pub fn step(vm: *VirtualMachine, alloc: Allocator) !void {
+    pub fn step(vm: *VirtualMachine, alloc: Allocator) !bool {
         if (vm.pc >= vm.instructions.len)
-            return error.NoMoreInstructions;
+            return true;
 
         const instr = vm.instructions[vm.pc];
         const cmd = instr.cmd;
@@ -201,6 +200,8 @@ pub const VirtualMachine = struct {
 
             else => {}, // TODO
         }
+
+        return false;
     }
 };
 
@@ -227,9 +228,53 @@ test "simple matmul" {
         .instructions = instructions,
     };
 
-    try vm.step(arena.allocator());
-    try vm.step(arena.allocator());
-    try vm.step(arena.allocator());
+    while (!(try vm.step(arena.allocator()))) {}
+
+    const C = try vm.stack.pop();
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 2 }, C.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 15, 27, 6, 7 }, C.data);
+}
+
+test "parse an entire VM then execute" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    const bytes = &[_]u8{
+        0x42, 0x00, 0x00, 0x00, // cpool bytes
+        0x02, 0x00, 0x00, 0x00, // cpool tensors
+
+        // Constant A
+        2, // n_dims
+        0x02, 0x00, 0x00, 0x00, // 2 rows
+        0x03, 0x00, 0x00, 0x00, // 3 cols
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x40, // 2
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x00, // 0
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x00, // 0
+
+        // Constant B
+        2, // n_dims
+        0x03, 0x00, 0x00, 0x00, // 3 rows
+        0x02, 0x00, 0x00, 0x00, // 2 cols
+        0x00, 0x00, 0x00, 0x40, // 2
+        0x00, 0x00, 0xa0, 0x40, // 5
+        0x00, 0x00, 0xc0, 0x40, // 6
+        0x00, 0x00, 0xe0, 0x40, // 7
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x41, // 8
+
+        // Instructions
+        0x0e, 0x00, // LOAD A
+        0x0e, 0x01, // LOAD B
+        0x04, 0x00, // MATMUL
+    };
+
+    var vm = try VirtualMachine.tryParse(arena.allocator(), bytes);
+    while (!(try vm.step(arena.allocator()))) {}
 
     const C = try vm.stack.pop();
 
