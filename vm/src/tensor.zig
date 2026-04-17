@@ -106,6 +106,19 @@ pub fn setMany(self: *Tensor, vals: []const f32) void {
         self.data[i] = val;
 }
 
+pub fn isZero(a: Tensor) bool {
+    var allZeros = true;
+
+    for (a.data) |val| {
+        if (!std.math.approxEqAbs(f32, val, 0, 1e-10)) {
+            allZeros = false;
+            break;
+        }
+    }
+
+    return allZeros;
+}
+
 pub fn sumReduceRows(self: *const Tensor, alloc: Allocator) !Tensor {
     if (self.shape.len != 2)
         return error.InvalidShapeForOp;
@@ -184,6 +197,21 @@ pub fn inPlaceRelu(self: *Tensor) void {
 pub fn relu(self: *const Tensor, alloc: Allocator) !Tensor {
     var copy = try self.clone(alloc);
     copy.inPlaceRelu();
+
+    return copy;
+}
+
+pub fn subInPlace(self: *Tensor, b: Tensor) !void {
+    if (!std.mem.eql(usize, self.shape, b.shape))
+        return error.OperandSizesDoNotAgree;
+
+    for (self.data, 0..) |*a_val, i|
+        a_val.* -= b.data[i];
+}
+
+pub fn sub(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    var copy = try a.clone(alloc);
+    try copy.subInPlace(b);
 
     return copy;
 }
@@ -407,4 +435,20 @@ test "cross entropy loss" {
     try std.testing.expectEqualSlices(usize, &[_]usize{1}, loss.shape);
 
     try std.testing.expectApproxEqAbs(2.31269, loss.data[0], 1e-4);
+}
+
+test "cmp" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    var B: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+
+    A.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
+    B.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
+
+    const C = try A.sub(B, arena.allocator());
+
+    try std.testing.expect(C.isZero());
 }
