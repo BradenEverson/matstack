@@ -7,20 +7,20 @@ A MatStack program consists of
 ## General Structure
 
 ```
-[[ Header ]] 4-bytes
+[[ Header ]] 8-bytes
 [[ Constant Pool ]] N-bytes
 [[ Instructions ]] rest
 ```
 
 ## Size Header
-Not much to say here, just a 32-bit LE unsigned size of the constant pool in bytes
+Two 32-bit LE unsigned size of the constant pool, first in bytes and second in tensors
 
 ## Constant Pool
 From the size provided, the next `size` bytes belong to the constant pool. A constant in the constant pool is described as:
 
 ```
 [ N dims ] [ dim 1  ] ... [ dim n  ] [ value 1  ] ... [ value (dim 1 * .. * dim n) ]
-[ 4-byte ] [ 4-byte ] ... [ 4-byte ] [  4-byte  ] ... [          4-byte            ]
+[ 1-byte ] [ 4-byte ] ... [ 4-byte ] [  4-byte  ] ... [          4-byte            ]
 ```
 
 ## Instructions
