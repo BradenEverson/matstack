@@ -87,7 +87,7 @@ pub const VirtualMachine = struct {
 
             .store_i => {
                 const idx = @as(usize, extra);
-                const res = vm.scratch_area[idx];
+                const res = try vm.scratch_area[idx].clone(alloc);
 
                 try vm.stack.push(res);
             },
@@ -100,24 +100,14 @@ pub const VirtualMachine = struct {
             },
 
             .branch_always => {
-                // TODO: Add or subtract from pc
-                //
-                // const offset: i8 = @bitCast(extra);
-                // based on offset
-                // vm.pc += offset;
+                const offset: i8 = @bitCast(extra);
+                vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
             },
 
             else => {}, // TODO
         }
     }
 };
-
-test {
-    _ = @import("tensor.zig");
-    _ = @import("operand.zig");
-    _ = @import("instruction.zig");
-    _ = @import("stack.zig");
-}
 
 test "simple matmul" {
     const alloc = std.testing.allocator;
@@ -150,4 +140,11 @@ test "simple matmul" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 2 }, C.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 15, 27, 6, 7 }, C.data);
+}
+
+test {
+    _ = @import("tensor.zig");
+    _ = @import("operand.zig");
+    _ = @import("instruction.zig");
+    _ = @import("stack.zig");
 }

@@ -106,6 +106,25 @@ pub fn setMany(self: *Tensor, vals: []const f32) void {
         self.data[i] = val;
 }
 
+pub fn sumReduceRows(self: *const Tensor, alloc: Allocator) !Tensor {
+    if (self.shape.len != 2)
+        return error.InvalidShapeForOp;
+
+    const M = self.shape[0];
+    const N = self.shape[1];
+    var result = try makeTensor(alloc, &[2]usize{ M, 1 });
+
+    for (0..M) |i| {
+        var sum: f32 = 0.0;
+        for (0..N) |k| {
+            sum += self.at(&.{ i, k });
+        }
+        result.set(&.{ i, 0 }, sum);
+    }
+
+    return result;
+}
+
 pub fn transposeMatInPlace(self: *Tensor) !void {
     if (self.shape.len != 2)
         return error.InvalidShapeForOp;
@@ -182,6 +201,66 @@ pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     try copy.addInPlace(b);
 
     return copy;
+}
+
+pub fn softmax(self: *const Tensor, alloc: Allocator) !Tensor {
+    if (self.shape.len != 2)
+        return error.InvalidShapeForOp;
+
+    const M = self.shape[0];
+    const N = self.shape[1];
+    var result = try makeTensor(alloc, self.shape);
+
+    for (0..M) |i| {
+        var max: f32 = -std.math.inf(f32);
+        for (0..N) |k| {
+            const v = self.at(&.{ i, k });
+            if (v > max) max = v;
+        }
+
+        var sum: f32 = 0.0;
+        for (0..N) |k| {
+            const v = std.math.exp(self.at(&.{ i, k }) - max);
+            result.set(&.{ i, k }, v);
+            sum += v;
+        }
+
+        for (0..N) |k| {
+            result.atMut(&.{ i, k }).* /= sum;
+        }
+    }
+
+    return result;
+}
+
+pub fn crossEntropyLoss(
+    predictions: *const Tensor,
+    labels: *const Tensor,
+    alloc: Allocator,
+) !Tensor {
+    if (predictions.shape.len != 2 or labels.shape.len != 2)
+        return error.InvalidShapeForOp;
+    if (!std.mem.eql(usize, predictions.shape, labels.shape))
+        return error.OperandSizesDoNotAgree;
+
+    const M = predictions.shape[0];
+    const N = predictions.shape[1];
+    var total_loss: f32 = 0.0;
+
+    for (0..M) |i| {
+        for (0..N) |k| {
+            const p = predictions.at(&.{ i, k });
+            const y = labels.at(&.{ i, k });
+            if (y > 0.0) {
+                const p_clamped = @max(p, 1e-7);
+                total_loss -= y * std.math.log(f32, std.math.e, p_clamped);
+            }
+        }
+    }
+
+    var result = try makeTensor(alloc, &[1]usize{1});
+    result.data[0] = total_loss / @as(f32, @floatFromInt(M));
+    return result;
 }
 
 test "make a scalar" {
@@ -279,4 +358,53 @@ test "ReLu" {
     A.inPlaceRelu();
 
     try std.testing.expectEqualSlices(f32, &[_]f32{ 0, 2, 1, 0, 1, 0.1 }, A.data);
+}
+
+test "softmax" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ 1, 2, 3, 1, 1, 1 });
+
+    const S = try A.softmax(arena.allocator());
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, S.shape);
+
+    const row0_sum = S.data[0] + S.data[1] + S.data[2];
+    const row1_sum = S.data[3] + S.data[4] + S.data[5];
+    try std.testing.expectApproxEqAbs(1.0, row0_sum, 1e-5);
+    try std.testing.expectApproxEqAbs(1.0, row1_sum, 1e-5);
+
+    try std.testing.expectApproxEqAbs(S.data[3], S.data[4], 1e-5);
+    try std.testing.expectApproxEqAbs(S.data[4], S.data[5], 1e-5);
+
+    try std.testing.expectApproxEqAbs(0.09003, S.data[0], 1e-4);
+    try std.testing.expectApproxEqAbs(0.24473, S.data[1], 1e-4);
+    try std.testing.expectApproxEqAbs(0.66524, S.data[2], 1e-4);
+}
+
+test "cross entropy loss" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var predictions: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    var labels: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+
+    predictions.setMany(&[_]f32{
+        0.01, 0.01, 0.98,
+        0.98, 0.01, 0.01,
+    });
+    labels.setMany(&[_]f32{
+        0, 0, 1,
+        0, 0, 1,
+    });
+
+    const loss = try Tensor.crossEntropyLoss(&predictions, &labels, arena.allocator());
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{1}, loss.shape);
+
+    try std.testing.expectApproxEqAbs(2.31269, loss.data[0], 1e-4);
 }
