@@ -31,6 +31,45 @@ pub fn deinit(self: *Tensor, alloc: Allocator) void {
     alloc.free(self.strides);
 }
 
+pub fn fromBytes(alloc: Allocator, buf: []const u8) !struct { Tensor, []const u8 } {
+    var rest = buf;
+
+    const n_dims = rest[0];
+    rest = rest[1..];
+
+    const shape = try alloc.alloc(usize, n_dims);
+
+    for (shape) |*dim| {
+        dim.* = std.mem.readInt(u32, &[4]u8{
+            rest[0],
+            rest[1],
+            rest[2],
+            rest[3],
+        }, .little);
+        rest = rest[4..];
+    }
+    defer alloc.free(shape); // will get realloced from makeTensor
+
+    const tensor: Tensor = try .makeTensor(alloc, shape);
+
+    for (tensor.data) |*val| {
+        const bits = std.mem.readInt(u32, &[4]u8{
+            rest[0],
+            rest[1],
+            rest[2],
+            rest[3],
+        }, .little);
+        rest = rest[4..];
+
+        val.* = @bitCast(bits);
+    }
+
+    return .{
+        tensor,
+        rest,
+    };
+}
+
 pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
     const shapeOwned = try alloc.dupe(usize, shape);
     errdefer alloc.free(shapeOwned);
@@ -451,4 +490,29 @@ test "cmp" {
     const C = try A.sub(B, arena.allocator());
 
     try std.testing.expect(C.isZero());
+}
+
+test "read a tensor" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    const bytes = &[_]u8{
+        2, // n_dims
+        0x02, 0x00, 0x00, 0x00, // 2 rows
+        0x03, 0x00, 0x00, 0x00, // 3 cols
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x40, // 2
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x00, // 0
+        0x00, 0x00, 0x80, 0x3f, // 1
+        0x00, 0x00, 0x00, 0x00, // 0
+    };
+
+    const A, const rest = try Tensor.fromBytes(arena.allocator(), bytes);
+
+    try std.testing.expectEqual(0, rest.len);
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, A.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 2, 1, 0, 1, 0 }, A.data);
 }
