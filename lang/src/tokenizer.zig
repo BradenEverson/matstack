@@ -21,6 +21,11 @@ pub const TokenTag = enum {
     newline,
     number,
     eof,
+    open_bracket,
+    open_paren,
+    close_brakcet,
+    close_paren,
+    comma,
 };
 
 pub const Token = struct {
@@ -82,6 +87,62 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                     .data = stream[start_idx..idx],
                 };
             },
+
+            ',' => {
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = .comma,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
+                };
+            },
+
+            '(' => {
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = .open_paren,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
+                };
+            },
+
+            ')' => {
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = .close_paren,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
+                };
+            },
+
+            '[' => {
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = .open_bracket,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
+                };
+            },
+
+            ']' => {
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = .close_brakcet,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
+                };
+            },
+
             '/' => {
                 idx += 1;
                 col += 1;
@@ -180,4 +241,14 @@ test "basic tokenize" {
     try std.testing.expectEqualSlices(u8, tokens.items[2].data, "10");
 
     try std.testing.expectEqual(tokens.items[3].tag, .eof);
+}
+
+test "tokenize tensor initialization" {
+    const alloc = std.testing.allocator;
+    var tokens = std.ArrayList(Token).empty;
+    defer tokens.deinit(alloc);
+
+    const simple = "W = tensor([[1,2,3],[4,5,6]])";
+
+    try tokenize(simple, &tokens, alloc);
 }
