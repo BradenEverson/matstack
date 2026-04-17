@@ -68,6 +68,24 @@ pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
     };
 }
 
+pub fn clone(from: *const Tensor, alloc: Allocator) !Tensor {
+    const shape = try alloc.dupe(usize, from.shape);
+    errdefer alloc.free(shape);
+
+    const strides = try alloc.dupe(usize, from.strides);
+    errdefer alloc.free(strides);
+
+    const data = try alloc.dupe(usize, from.data);
+    errdefer alloc.free(data);
+
+    return .{
+        .shape = shape,
+        .data = data,
+        .strides = strides,
+        .offset = from.offset,
+    };
+}
+
 pub fn flattenIdx(self: *const Tensor, idx: []const usize) usize {
     var res = self.offset;
 
@@ -122,6 +140,19 @@ pub fn matmul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     }
 
     return res;
+}
+
+pub fn inPlaceRelu(self: *Tensor) void {
+    for (self.data) |*val| {
+        if (val < 0) val = 0;
+    }
+}
+
+pub fn relu(self: *const Tensor, alloc: Allocator) !Tensor {
+    var copy = try self.clone(alloc);
+    copy.inPlaceRelu();
+
+    return copy;
 }
 
 test "make a scalar" {
