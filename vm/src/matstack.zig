@@ -15,14 +15,24 @@ pub const SCRATCH_SIZE: usize = 256;
 
 pub fn parseConstantPool(
     alloc: Allocator,
+    tensor_count: usize,
     cpool_bytes: []const u8,
 ) ![]const Tensor {
-    _ = alloc;
-    _ = cpool_bytes;
+    const constant_pool = try alloc.alloc(Tensor, tensor_count);
+    errdefer alloc.free(constant_pool);
+    var rest = cpool_bytes;
+
+    for (constant_pool) |*constant| {
+        constant.*, rest = try Tensor.fromBytes(alloc, rest);
+        errdefer alloc.free(constant.deinit(alloc));
+    }
+
+    return constant_pool;
 }
 
 pub const VmError = error{
     NoMoreInstructions,
+    MalformedInstructioBytes,
 };
 
 pub const VirtualMachine = struct {
@@ -33,6 +43,62 @@ pub const VirtualMachine = struct {
     pc: usize = 0,
 
     scratch_area: [SCRATCH_SIZE]Operand = undefined,
+
+    pub fn tryParse(alloc: Allocator, bytes: []const u8) !VirtualMachine {
+        var rest = bytes;
+
+        // Parse the header
+        // one 4-byte length of cpool in bytes
+        // one 4-byte length of cpool in tensors
+        const cpool_bytes = std.mem.readInt(u32, &[4]u8{
+            rest[0],
+            rest[1],
+            rest[2],
+            rest[3],
+        }, .little);
+        rest = rest[4..];
+
+        const cpool_tensors = std.mem.readInt(u32, &[4]u8{
+            rest[0],
+            rest[1],
+            rest[2],
+            rest[3],
+        }, .little);
+        rest = rest[4..];
+
+        // Parse the constant pool :D
+
+        const cpool = try parseConstantPool(alloc, cpool_tensors, rest[0..cpool_bytes]);
+        errdefer alloc.free(cpool);
+
+        rest = rest[cpool_bytes..];
+
+        // The rest of the bytes are 2-byte instruction pairs
+        // let's make sure the rest actually is 2-byte pairs
+        if (rest.len % 2 != 0)
+            return error.MalformedInstructioBytes;
+
+        const instr_count = rest.len / 2;
+        const instructions = try alloc.alloc(Instruction, instr_count);
+        errdefer alloc.free(instructions);
+
+        for (instructions) |*instr| {
+            const cmd_byte = rest[0];
+            const extra_byte = rest[1];
+
+            instr.* = .{
+                .cmd = @enumFromInt(cmd_byte),
+                .extra = extra_byte,
+            };
+
+            rest = rest[2..];
+        }
+
+        return .{
+            .constant_pool = cpool,
+            .instructions = instructions,
+        };
+    }
 
     pub fn step(vm: *VirtualMachine, alloc: Allocator) !void {
         if (vm.pc >= vm.instructions.len)
