@@ -7,7 +7,6 @@ pub const Command = enum(u8) {
     sub,
     mul,
     matmul,
-    cmp,
     transpose,
     relu,
 
@@ -23,6 +22,11 @@ pub const Command = enum(u8) {
 
     // Branching
     branch_always,
+    branch_eq,
+    branch_ne,
+
+    // Debug
+    debug_print,
 };
 
 cmd: Command = .nop,

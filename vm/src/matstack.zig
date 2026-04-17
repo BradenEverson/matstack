@@ -71,6 +71,15 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(lhs);
             },
 
+            .sub => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+
+                try lhs.subInPlace(rhs);
+                try vm.stack.push(lhs);
+            },
+
             .transpose => {
                 var res = try vm.stack.pop();
                 try res.transposeMatInPlace();
@@ -102,6 +111,26 @@ pub const VirtualMachine = struct {
             .branch_always => {
                 const offset: i8 = @bitCast(extra);
                 vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+            },
+
+            .branch_eq => {
+                var cmp = try vm.stack.pop();
+                defer cmp.deinit(alloc);
+
+                if (cmp.isZero()) {
+                    const offset: i8 = @bitCast(extra);
+                    vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+                }
+            },
+
+            .branch_ne => {
+                var cmp = try vm.stack.pop();
+                defer cmp.deinit(alloc);
+
+                if (!cmp.isZero()) {
+                    const offset: i8 = @bitCast(extra);
+                    vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+                }
             },
 
             else => {}, // TODO
