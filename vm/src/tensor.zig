@@ -75,7 +75,7 @@ pub fn clone(from: *const Tensor, alloc: Allocator) !Tensor {
     const strides = try alloc.dupe(usize, from.strides);
     errdefer alloc.free(strides);
 
-    const data = try alloc.dupe(usize, from.data);
+    const data = try alloc.dupe(f32, from.data);
     errdefer alloc.free(data);
 
     return .{
@@ -178,6 +178,21 @@ pub fn relu(self: *const Tensor, alloc: Allocator) !Tensor {
     return copy;
 }
 
+pub fn addInPlace(self: *Tensor, b: Tensor) !void {
+    if (!std.mem.eql(usize, self.shape, b.shape))
+        return error.OperandSizesDoNotAgree;
+
+    for (self.data, 0..) |*a_val, i|
+        a_val.* += b.data[i];
+}
+
+pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    var copy = try a.clone(alloc);
+    try copy.addInPlace(b);
+
+    return copy;
+}
+
 test "make a scalar" {
     const alloc = std.testing.allocator;
     var arena = std.heap.ArenaAllocator.init(alloc);
@@ -226,4 +241,21 @@ test "transpose" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 3, 2 }, A.shape);
     try std.testing.expectEqualSlices(usize, &[_]usize{ 1, 3 }, A.strides);
+}
+
+test "add" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+
+    var A: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+    var B: Tensor = try .makeTensor(arena.allocator(), &[2]usize{ 2, 3 });
+
+    A.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
+    B.setMany(&[_]f32{ 2, 5, 6, 7, 1, 8 });
+
+    const C = try A.add(B, arena.allocator());
+
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, C.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 3, 7, 7, 7, 2, 8 }, C.data);
 }

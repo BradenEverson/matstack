@@ -30,13 +30,28 @@ pub const VirtualMachine = struct {
 
     scratch_area: [SCRATCH_SIZE]Operand,
 
-    pub fn step(vm: *VirtualMachine) !void {
+    pub fn step(vm: *VirtualMachine, alloc: Allocator) !void {
         const cmd, const extra: Instruction = vm.instructions[vm.pc];
 
         switch (cmd) {
             .load_const => {
                 const cpool_idx = @as(usize, extra);
                 try vm.stack.push(vm.constant_pool[cpool_idx]);
+            },
+
+            .matmul => {
+                const rhs = try vm.stack.pop();
+                const lhs = try vm.stack.pop();
+
+                const res = lhs.matmul(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .transpose => {
+                var res = try vm.stack.pop();
+                res.transposeMatInPlace();
+
+                try vm.stack.push(res);
             },
 
             _ => {}, // TODO

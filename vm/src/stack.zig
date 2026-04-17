@@ -1,6 +1,6 @@
 //! The Operand Stack!
 
-pub const Operand = @import("operand.zig").Operand;
+pub const Operand = @import("tensor.zig");
 
 /// Maximum operands that can be on the stack at a time
 pub const MAX_STACK_SIZE: usize = 512;
