@@ -4,11 +4,11 @@ This is pretty much just a python-like language that supports variables and appl
 
 Keywords:
 
-- tensor({raw_tensor})
+- `tensor({raw_tensor})`
     - Constructs a tensor from a multidimensional array
     - ex: `W = tensor([[1,2,3],[0.5,6,0]])`
 
-- rand({shape})
+- `rand({shape})`
     - Constructs a random (at compile time) tensor with the provided shape
     - ex: `W = rand((2, 3))`
 
