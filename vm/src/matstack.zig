@@ -67,11 +67,30 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .load_i => {
+                const res = try vm.stack.peek();
+                const idx = @as(usize, extra);
+
+                vm.scratch_area[idx] = try res.clone(alloc);
+            },
+
+            .store_i => {
+                const idx = @as(usize, extra);
+                const res = vm.scratch_area[idx];
+
+                try vm.stack.push(res);
+            },
+
             .relu => {
                 var res = try vm.stack.pop();
                 res.inPlaceRelu();
 
                 try vm.stack.push(res);
+            },
+
+            .branch_always => {
+                const offset: i8 = @bitCast(extra);
+                vm.pc += offset;
             },
 
             _ => {}, // TODO

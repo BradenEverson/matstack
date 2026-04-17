@@ -27,3 +27,8 @@ pub fn pop(stack: *Self) !Operand {
 
     return stack.stack[stack.sp];
 }
+
+pub fn peek(stack: *Self) !Operand {
+    if (stack.sp == 0) return error.StackEmpty;
+    return stack.stack[stack.sp - 1];
+}
