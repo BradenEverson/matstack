@@ -1,8 +1,8 @@
-# MatStack program spec
+# Virtual Machine program spec
 
-A MatStack program consists of 
+A vm program consists of 
     1. A constant pool of all "immediate" values used
-    2. A series of MatStack instructions that interact with the working stack
+    2. A series of instructions that interact with the working stack
 
 ## General Structure
 
