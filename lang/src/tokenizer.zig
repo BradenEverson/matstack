@@ -14,6 +14,8 @@ pub const Keyword = enum {
     softmax,
     relu,
     cross_entropy,
+    ln,
+    exp,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -23,6 +25,8 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "softmax", .softmax },
     .{ "relu", .relu },
     .{ "cross_entropy", .cross_entropy },
+    .{ "ln", .ln },
+    .{ "exp", .exp },
 });
 
 pub const TokenTag = enum {

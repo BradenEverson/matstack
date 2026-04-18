@@ -26,6 +26,14 @@ pub const BinaryOp = enum {
     matmul,
 };
 
+pub const UnaryOp = enum {
+    relu,
+    softmax,
+    cross_entropy,
+    ln,
+    exp,
+};
+
 pub const ParserError = error{
     UnexpectedToken,
     ExpectedSemicolon,
