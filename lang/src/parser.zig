@@ -44,6 +44,7 @@ pub const ParserError = error{
     UnexpectedToken,
     ExpectedSemicolon,
     OutOfTokens,
+    TODO,
 };
 
 pub const Parser = struct {
@@ -98,12 +99,12 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, ast: *std.ArrayList(*const Expr)) !void {
         while (!self.at_end()) {
+            const expr = try self.statement();
+            try ast.append(self.arena.allocator(), expr);
+
             while (self.peek() == .newline) {
                 try self.consume(.newline);
             }
-
-            const expr = try self.statement();
-            try ast.append(self.arena.allocator(), expr);
         }
     }
 
@@ -196,6 +197,7 @@ pub const Parser = struct {
         switch (current_token.tag) {
             .open_bracket => {
                 // parse a matrix representation
+                return error.TODO;
             },
 
             .number => {
@@ -222,4 +224,23 @@ test "create a parser" {
     defer p.deinit();
 
     try std.testing.expectEqual(0, p.cursor);
+}
+
+test "basic parse" {
+    const alloc = std.testing.allocator;
+    const tokens: []const Token = &[_]Token{
+        .{ .tag = .ident, .data = "W" },
+        .{ .tag = .equals },
+        .{ .tag = .number, .data = "1.5" },
+        .{ .tag = .newline },
+    };
+
+    var p = Parser.init(alloc, tokens);
+    defer p.deinit();
+
+    var ast: std.ArrayList(*const Expr) = .empty;
+    try p.parse(&ast);
+
+    try std.testing.expectEqualStrings(ast.items[0].assignment.name, "W");
+    try std.testing.expectEqual(ast.items[0].assignment.val.literal.number, 1.5);
 }

@@ -69,8 +69,8 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
 
 pub const Token = struct {
     tag: TokenTag,
-    line: usize,
-    col: usize,
+    line: usize = 0,
+    col: usize = 0,
     data: []const u8 = "no data",
 };
 
