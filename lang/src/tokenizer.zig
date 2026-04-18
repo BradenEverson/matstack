@@ -69,7 +69,7 @@ pub const Token = struct {
     tag: TokenTag,
     line: usize,
     col: usize,
-    data: []const u8,
+    data: []const u8 = "no data",
 };
 
 pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.mem.Allocator) !void {
@@ -165,7 +165,7 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
         }
     }
 
-    try tokens.append(alloc, .{ .col = col, .line = line, .tag = .eof, .data = undefined });
+    try tokens.append(alloc, .{ .col = col, .line = line, .tag = .eof });
 }
 
 test "basic tokenize" {

@@ -12,7 +12,6 @@ pub fn main(init: std.process.Init) !void {
     _ = args.next();
 
     if (args.next()) |file_path| {
-        std.debug.print("Opening `{s}`\n", .{file_path});
         const bytecode = try std.Io.Dir.cwd().readFileAlloc(
             io,
             file_path,
@@ -27,5 +26,6 @@ pub fn main(init: std.process.Init) !void {
         while (!(try vm.step(arena.allocator()))) {}
     } else {
         std.debug.print("Missing bytecode file!!!\n", .{});
+        std.process.exit(1);
     }
 }
