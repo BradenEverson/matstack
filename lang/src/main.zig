@@ -6,6 +6,8 @@ const Token = tokenizer.Token;
 const parse = @import("parser.zig");
 const Parser = parse.Parser;
 
+const compiler = @import("compiler.zig");
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena;
     const io = init.io;

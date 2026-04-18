@@ -2,41 +2,50 @@
 
 const std = @import("std");
 const parser = @import("parser.zig");
+const matstack = @import("matstack");
 
-pub const TranslationError = error{
+pub const CompileError = error{
     /// when a provided tensor literal is inconsistently sized, such as
     /// [[1,2,3], [1,2], [1,2,3]]
     MalformedTensor,
 };
 
-pub const Tensor = struct {
-    data: []f32,
-    shape: []usize,
+/// A nice little structure for maintaining free
+/// slots in the scratch area for variable allocation.
+///
+/// Probably overkill for now but hey it's fun
+pub const SlotStack = struct {
+    bottom: u8 = 0,
+    reused: std.ArrayList(u8) = .empty,
 
-    pub fn makeTensor(alloc: std.mem.Allocator, shape: []const usize) !Tensor {
-        const shapeOwned = try alloc.dupe(usize, shape);
-        errdefer alloc.free(shapeOwned);
+    const SlotStackError = error{
+        NoFreeSlots,
+    };
 
-        var n: usize = 1;
-        for (shape) |s| n *= s;
-
-        const data = try alloc.alloc(f32, n);
-
-        return .{
-            .data = data,
-            .shape = shapeOwned,
-        };
-    }
-
-    pub fn fromLiteral(alloc: std.mem.Allocator, literal: parser.Literal) !Tensor {
-        switch (literal) {
-            .number => |n| {
-                const tensor = try Tensor.makeTensor(alloc, &[_]usize{1});
-                tensor.data[0] = n;
-
-                return tensor;
-            },
-            else => error.MalformedTensor,
+    pub fn pop(stack: *SlotStack) !u8 {
+        if (stack.reused.items.len != 0) {
+            return stack.reused.pop().?;
         }
+
+        stack.bottom += 1;
+        return stack.bottom - 1;
+    }
+};
+
+pub const VmIR = struct {
+    /// Allocations into the scratch area for variables to be stored
+    variable_allocations: std.StringHashMapUnmanaged(u8) = .empty,
+    slotstack: SlotStack = .{},
+
+    /// The constant pool.
+    /// TODO: We need to validate that a literal
+    /// provided does not have malformed dimensions
+    tensors: std.ArrayList(parser.Literal) = .empty,
+
+    instruction: std.ArrayList(matstack.Instruction) = .empty,
+
+    pub fn fromAst(alloc: std.mem.Allocator, ast: []const parser.Expr) !void {
+        _ = alloc;
+        _ = ast;
     }
 };
