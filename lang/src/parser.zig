@@ -153,7 +153,7 @@ pub const Parser = struct {
     fn factor(self: *Parser) AnyParserError!*const Expr {
         var left = try self.primary();
 
-        while (self.peek() == .star or self.peek() == .slash) {
+        while (self.peek() == .star or self.peek() == .slash or self.peek() == .at) {
             const op_token = self.tokens[self.cursor];
             self.advance();
             const right = try self.primary();
@@ -231,13 +231,25 @@ pub const Parser = struct {
                 return literal_expr;
             },
 
+            .minus => {
+                const next_token = self.tokens[self.cursor];
+                self.advance();
+
+                const number_val = try std.fmt.parseFloat(f32, next_token.data);
+                const literal_expr = try self.arena.allocator().create(Expr);
+                literal_expr.* = .{ .literal = .{ .number = -1 * number_val } };
+                return literal_expr;
+            },
+
             .number => {
                 const number_val = try std.fmt.parseFloat(f32, current_token.data);
                 const literal_expr = try self.arena.allocator().create(Expr);
                 literal_expr.* = .{ .literal = .{ .number = number_val } };
                 return literal_expr;
             },
-            else => return ParserError.UnexpectedToken,
+            else => {
+                return ParserError.UnexpectedToken;
+            },
         }
     }
 };
@@ -333,6 +345,7 @@ test "basic matrix" {
         .{ .tag = .comma },
         .{ .tag = .number, .data = "8" },
         .{ .tag = .comma },
+        .{ .tag = .minus },
         .{ .tag = .number, .data = "9" },
         .{ .tag = .close_bracket },
         .{ .tag = .close_bracket },
@@ -360,7 +373,7 @@ test "basic matrix" {
 
     try std.testing.expectEqual(row3[0].literal.number, 7);
     try std.testing.expectEqual(row3[1].literal.number, 8);
-    try std.testing.expectEqual(row3[2].literal.number, 9);
+    try std.testing.expectEqual(row3[2].literal.number, -9);
 }
 
 test "keyword 'function' eval" {

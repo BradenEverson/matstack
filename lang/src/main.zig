@@ -3,6 +3,9 @@ const std = @import("std");
 const tokenizer = @import("tokenizer.zig");
 const Token = tokenizer.Token;
 
+const parse = @import("parser.zig");
+const Parser = parse.Parser;
+
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena;
     const io = init.io;
@@ -27,15 +30,21 @@ pub fn main(init: std.process.Init) !void {
     }
 
     errdefer alloc.free(source);
-    std.debug.print("{s}\n", .{source});
 
     var tokens: std.ArrayList(Token) = .empty;
     defer tokens.deinit(alloc);
 
     try tokenizer.tokenize(source, &tokens, alloc);
 
-    for (tokens.items) |tok| {
-        std.debug.print("{} - {s}\n", .{ tok.tag, tok.data });
+    var parser = Parser.init(alloc, tokens.items);
+    defer parser.deinit();
+
+    var ast: std.ArrayList(*const parse.Expr) = .empty;
+
+    try parser.parse(&ast);
+
+    for (ast.items) |expr| {
+        std.debug.print("{any}\n", .{expr});
     }
 }
 
