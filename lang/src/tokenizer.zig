@@ -7,6 +7,23 @@ const TokenizeError = error{
     UnexpectedCharacter,
 };
 
+pub const Keyword = enum {
+    tensor,
+    rand,
+    debug,
+    softmax,
+    relu,
+    cross_entropy,
+};
+pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
+    .{ "tensor", .tensor },
+    .{ "rand", .rand },
+    .{ "debug", .debug },
+    .{ "softmax", .softmax },
+    .{ "relu", .relu },
+    .{ "cross_entropy", .cross_entropy },
+});
+
 pub const TokenTag = enum {
     keyword,
     ident,
@@ -23,7 +40,7 @@ pub const TokenTag = enum {
     eof,
     open_bracket,
     open_paren,
-    close_brakcet,
+    close_bracket,
     close_paren,
     comma,
 };
@@ -55,9 +72,14 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                     col += 1;
                 }
                 const ident = stream[start_idx..idx];
-                // TODO: Check if ident or keyword
+
+                const tag: TokenTag = if (KeywordLookup.get(ident)) |_|
+                    .keyword
+                else
+                    .ident;
+
                 curr = Token{
-                    .tag = .ident,
+                    .tag = tag,
                     .line = line,
                     .col = start_col,
                     .data = ident,
@@ -65,7 +87,11 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
             },
 
             '0'...'9' => {
-                while (idx < stream.len and (std.ascii.isDigit(stream[idx]) or stream[idx] == '.')) {
+                var seen_dot = false;
+                while (idx < stream.len and (std.ascii.isDigit(stream[idx]) or (stream[idx] == '.' and !seen_dot))) {
+                    if (stream[idx] == '.')
+                        seen_dot = true;
+
                     idx += 1;
                     col += 1;
                 }
@@ -136,7 +162,7 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                 idx += 1;
                 col += 1;
                 curr = Token{
-                    .tag = .close_brakcet,
+                    .tag = .close_bracket,
                     .line = line,
                     .col = start_col,
                     .data = stream[start_idx..idx],
@@ -251,4 +277,35 @@ test "tokenize tensor initialization" {
     const simple = "W = tensor([[1,2,3],[4,5,6]])";
 
     try tokenize(simple, &tokens, alloc);
+
+    const expected = &[_]TokenTag{
+        .ident,
+        .equals,
+        .keyword,
+        .open_paren,
+        .open_bracket,
+        .open_bracket,
+        .number,
+        .comma,
+        .number,
+        .comma,
+        .number,
+        .close_bracket,
+        .comma,
+        .open_bracket,
+        .number,
+        .comma,
+        .number,
+        .comma,
+        .number,
+        .close_bracket,
+        .close_bracket,
+        .close_paren,
+        .eof,
+    };
+
+    for (expected, 0..) |expected_tag, i| {
+        const seen_tag = tokens.items[i].tag;
+        try std.testing.expectEqual(expected_tag, seen_tag);
+    }
 }
