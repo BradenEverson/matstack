@@ -362,3 +362,22 @@ test "basic matrix" {
     try std.testing.expectEqual(row3[1].literal.number, 8);
     try std.testing.expectEqual(row3[2].literal.number, 9);
 }
+
+test "keyword 'function' eval" {
+    const alloc = std.testing.allocator;
+    const tokens: []const Token = &[_]Token{
+        .{ .tag = .keyword, .data = "relu" },
+        .{ .tag = .open_paren },
+        .{ .tag = .ident, .data = "y" },
+        .{ .tag = .close_paren },
+    };
+
+    var p = Parser.init(alloc, tokens);
+    defer p.deinit();
+
+    var ast: std.ArrayList(*const Expr) = .empty;
+    try p.parse(&ast);
+
+    try std.testing.expectEqual(ast.items[0].unary_op.op, .relu);
+    try std.testing.expectEqualStrings(ast.items[0].unary_op.expr.variable, "y");
+}

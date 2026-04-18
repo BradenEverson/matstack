@@ -9,7 +9,6 @@ const TokenizeError = error{
 
 pub const Keyword = enum {
     zeros_like,
-    tensor,
     rand,
     debug,
     softmax,
@@ -21,7 +20,6 @@ pub const Keyword = enum {
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "zeros_like", .zeros_like },
-    .{ "tensor", .tensor },
     .{ "rand", .rand },
     .{ "debug", .debug },
     .{ "softmax", .softmax },
@@ -195,15 +193,13 @@ test "tokenize tensor initialization" {
     var tokens = std.ArrayList(Token).empty;
     defer tokens.deinit(alloc);
 
-    const simple = "W = tensor([[1,2,3],[4,5,6]])";
+    const simple = "W = [[1,2,3],[4,5,6]]";
 
     try tokenize(simple, &tokens, alloc);
 
     const expected = &[_]TokenTag{
         .ident,
         .equals,
-        .keyword,
-        .open_paren,
         .open_bracket,
         .open_bracket,
         .number,
@@ -221,7 +217,6 @@ test "tokenize tensor initialization" {
         .number,
         .close_bracket,
         .close_bracket,
-        .close_paren,
         .eof,
     };
 
