@@ -15,6 +15,7 @@ pub const Keyword = enum {
     relu,
     cross_entropy,
 };
+
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "tensor", .tensor },
     .{ "rand", .rand },
@@ -27,6 +28,7 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
 pub const TokenTag = enum {
     keyword,
     ident,
+    number,
 
     plus,
     minus,
@@ -36,7 +38,6 @@ pub const TokenTag = enum {
     equals,
     bang,
     newline,
-    number,
     eof,
     open_bracket,
     open_paren,
@@ -44,6 +45,21 @@ pub const TokenTag = enum {
     close_paren,
     comma,
 };
+
+pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
+    .{ "+", .plus },
+    .{ "-", .minus },
+    .{ "@", .at },
+    .{ "*", .star },
+    .{ "/", .slash },
+    .{ "=", .equals },
+    .{ "!", .bang },
+    .{ "[", .open_bracket },
+    .{ "(", .open_paren },
+    .{ "]", .close_bracket },
+    .{ ")", .close_paren },
+    .{ ",", .comma },
+});
 
 pub const Token = struct {
     tag: TokenTag,
@@ -65,7 +81,16 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
         const start_idx = idx;
         const start_col = col;
 
-        switch (stream[idx]) {
+        if (TokenLookup.get(stream[idx .. idx + 1])) |tag| {
+            idx += 1;
+            col += 1;
+            curr = Token{
+                .tag = tag,
+                .line = line,
+                .col = start_col,
+                .data = stream[start_idx..idx],
+            };
+        } else switch (stream[idx]) {
             'a'...'z', 'A'...'Z', '_' => {
                 while (idx < stream.len and (std.ascii.isAlphanumeric(stream[idx]) or stream[idx] == '_')) {
                     idx += 1;
@@ -103,137 +128,27 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                     .data = number,
                 };
             },
-            '*' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .star,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
+
+            ' ', '\t', '\r' => {
+                while (idx < stream.len and (stream[idx] == ' ' or stream[idx] == '\t')) {
+                    idx += 1;
+                    col += 1;
+                }
             },
 
-            ',' => {
+            '\n' => {
                 idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .comma,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
+                line += 1;
+                col = 1;
 
-            '(' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .open_paren,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-
-            ')' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .close_paren,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-
-            '[' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .open_bracket,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-
-            ']' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .close_bracket,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-
-            '/' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .slash,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-            '+' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .plus,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-            '-' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .minus,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-            '=' => {
-                idx += 1;
-                col += 1;
-                curr = Token{
-                    .tag = .equals,
-                    .line = line,
-                    .col = start_col,
-                    .data = stream[start_idx..idx],
-                };
-            },
-            ';' => {
-                idx += 1;
-                col += 1;
                 curr = Token{
                     .tag = .newline,
                     .line = line,
                     .col = start_col,
                     .data = stream[start_idx..idx],
                 };
-                line += 1;
             },
-            ' ', '\t' => {
-                while (idx < stream.len and (stream[idx] == ' ' or stream[idx] == '\t')) {
-                    idx += 1;
-                    col += 1;
-                }
-            },
-            '\r' => {
-                idx += 1;
-                if (idx < stream.len and stream[idx] == '\n') {
-                    idx += 1;
-                }
-                line += 1;
-                col = 1;
-            },
+
             else => {
                 std.debug.print("Unexpected character: '{c}' at line {}, col {}\n", .{ stream[idx], line, col });
 
