@@ -14,14 +14,9 @@ pub const Expr = union(enum) {
     variable: []const u8,
 };
 
-pub const TensorLiteral = struct {
-    dims: std.ArrayList(usize) = .empty,
-    vals: std.ArrayList(f32) = .empty,
-};
-
 pub const Literal = union(enum) {
     number: f32,
-    tensor: TensorLiteral, // TODO
+    multidim: std.ArrayList(*const Expr),
 };
 
 pub const BinaryOp = enum {
@@ -192,12 +187,40 @@ pub const Parser = struct {
 
     fn primary(self: *Parser) !*const Expr {
         const current_token = self.tokens[self.cursor];
+
+        switch (current_token.tag) {
+            .ident => {
+                const variable_expr = try self.arena.allocator().create(Expr);
+                variable_expr.* = .{ .variable = current_token.data };
+                self.advance();
+                return variable_expr;
+            },
+            else => return try self.literal(),
+        }
+    }
+
+    fn literal(self: *Parser) !*const Expr {
+        const current_token = self.tokens[self.cursor];
         self.advance();
 
         switch (current_token.tag) {
             .open_bracket => {
-                // parse a matrix representation
-                return error.TODO;
+                const literal_expr = try self.arena.allocator().create(Expr);
+                literal_expr.* = .{ .literal = .{ .multidim = .empty } };
+                while (self.peek() != .close_bracket) {
+                    const subliteral_expr = try self.literal();
+
+                    try literal_expr.literal.multidim.append(
+                        self.arena.allocator(),
+                        subliteral_expr,
+                    );
+
+                    if (self.peek() != .close_bracket)
+                        try self.consume(.comma);
+                }
+
+                try self.consume(.close_bracket);
+                return literal_expr;
             },
 
             .number => {
@@ -205,11 +228,6 @@ pub const Parser = struct {
                 const literal_expr = try self.arena.allocator().create(Expr);
                 literal_expr.* = .{ .literal = .{ .number = number_val } };
                 return literal_expr;
-            },
-            .ident => {
-                const variable_expr = try self.arena.allocator().create(Expr);
-                variable_expr.* = .{ .variable = current_token.data };
-                return variable_expr;
             },
             else => return ParserError.UnexpectedToken,
         }
@@ -243,4 +261,96 @@ test "basic parse" {
 
     try std.testing.expectEqualStrings(ast.items[0].assignment.name, "W");
     try std.testing.expectEqual(ast.items[0].assignment.val.literal.number, 1.5);
+}
+
+test "basic vector" {
+    const alloc = std.testing.allocator;
+    const tokens: []const Token = &[_]Token{
+        .{ .tag = .ident, .data = "W" },
+        .{ .tag = .equals },
+
+        .{ .tag = .open_bracket },
+
+        .{ .tag = .number, .data = "1" },
+        .{ .tag = .comma },
+
+        .{ .tag = .number, .data = "2" },
+        .{ .tag = .comma },
+
+        .{ .tag = .number, .data = "3" },
+        .{ .tag = .comma },
+
+        .{ .tag = .close_bracket },
+
+        .{ .tag = .newline },
+    };
+
+    var p = Parser.init(alloc, tokens);
+    defer p.deinit();
+
+    var ast: std.ArrayList(*const Expr) = .empty;
+    try p.parse(&ast);
+
+    const vector_res = ast.items[0].assignment.val.literal.multidim.items;
+
+    try std.testing.expectEqual(vector_res[0].literal.number, 1);
+    try std.testing.expectEqual(vector_res[1].literal.number, 2);
+    try std.testing.expectEqual(vector_res[2].literal.number, 3);
+}
+
+test "basic matrix" {
+    const alloc = std.testing.allocator;
+    const tokens: []const Token = &[_]Token{
+        .{ .tag = .ident, .data = "W" },
+        .{ .tag = .equals },
+        .{ .tag = .open_bracket },
+        .{ .tag = .open_bracket },
+        .{ .tag = .number, .data = "1" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "2" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "3" },
+        .{ .tag = .close_bracket },
+        .{ .tag = .comma },
+        .{ .tag = .open_bracket },
+        .{ .tag = .number, .data = "4" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "5" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "6" },
+        .{ .tag = .close_bracket },
+        .{ .tag = .comma },
+        .{ .tag = .open_bracket },
+        .{ .tag = .number, .data = "7" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "8" },
+        .{ .tag = .comma },
+        .{ .tag = .number, .data = "9" },
+        .{ .tag = .close_bracket },
+        .{ .tag = .close_bracket },
+        .{ .tag = .newline },
+    };
+
+    var p = Parser.init(alloc, tokens);
+    defer p.deinit();
+
+    var ast: std.ArrayList(*const Expr) = .empty;
+    try p.parse(&ast);
+
+    const matrix = ast.items[0].assignment.val.literal.multidim.items;
+    const row1 = matrix[0].literal.multidim.items;
+    const row2 = matrix[1].literal.multidim.items;
+    const row3 = matrix[2].literal.multidim.items;
+
+    try std.testing.expectEqual(row1[0].literal.number, 1);
+    try std.testing.expectEqual(row1[1].literal.number, 2);
+    try std.testing.expectEqual(row1[2].literal.number, 3);
+
+    try std.testing.expectEqual(row2[0].literal.number, 4);
+    try std.testing.expectEqual(row2[1].literal.number, 5);
+    try std.testing.expectEqual(row2[2].literal.number, 6);
+
+    try std.testing.expectEqual(row3[0].literal.number, 7);
+    try std.testing.expectEqual(row3[1].literal.number, 8);
+    try std.testing.expectEqual(row3[2].literal.number, 9);
 }
