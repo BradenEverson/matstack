@@ -14,9 +14,14 @@ pub const Expr = union(enum) {
     variable: []const u8,
 };
 
+pub const TensorLiteral = struct {
+    dims: std.ArrayList(usize) = .empty,
+    vals: std.ArrayList(f32) = .empty,
+};
+
 pub const Literal = union(enum) {
     number: f32,
-    tensor: void, // TODO
+    tensor: TensorLiteral, // TODO
 };
 
 pub const BinaryOp = enum {
@@ -93,6 +98,10 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, ast: *std.ArrayList(*const Expr)) !void {
         while (!self.at_end()) {
+            while (self.peek() == .newline) {
+                try self.consume(.newline);
+            }
+
             const expr = try self.statement();
             try ast.append(self.arena.allocator(), expr);
         }
@@ -100,7 +109,6 @@ pub const Parser = struct {
 
     pub fn statement(self: *Parser) !*const Expr {
         const expr = try self.expression();
-        try self.consume(.newline);
         return expr;
     }
 
@@ -186,6 +194,10 @@ pub const Parser = struct {
         self.advance();
 
         switch (current_token.tag) {
+            .open_bracket => {
+                // parse a matrix representation
+            },
+
             .number => {
                 const number_val = try std.fmt.parseFloat(f32, current_token.data);
                 const literal_expr = try self.arena.allocator().create(Expr);
