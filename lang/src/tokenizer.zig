@@ -8,6 +8,7 @@ const TokenizeError = error{
 };
 
 pub const Keyword = enum {
+    zeros_like,
     tensor,
     rand,
     debug,
@@ -19,6 +20,7 @@ pub const Keyword = enum {
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
+    .{ "zeros_like", .zeros_like },
     .{ "tensor", .tensor },
     .{ "rand", .rand },
     .{ "debug", .debug },
