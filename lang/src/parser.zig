@@ -9,7 +9,7 @@ const TokenTag = tokenizer.TokenTag;
 pub const Expr = union(enum) {
     assignment: struct { name: []const u8, val: *const Expr },
     binary_op: struct { left: *const Expr, op: BinaryOp, right: *const Expr },
-    unary_op: struct { op: UnaryOp, expr: *const Expr },
+    unary_op: struct { op: tokenizer.Keyword, expr: *const Expr },
     literal: Literal,
     variable: []const u8,
 };
@@ -27,20 +27,13 @@ pub const BinaryOp = enum {
     matmul,
 };
 
-pub const UnaryOp = enum {
-    relu,
-    softmax,
-    cross_entropy,
-    ln,
-    exp,
-};
-
 pub const ParserError = error{
     UnexpectedToken,
     ExpectedSemicolon,
     OutOfTokens,
-    TODO,
 };
+
+const AnyParserError = ParserError || std.mem.Allocator.Error || std.fmt.ParseFloatError;
 
 pub const Parser = struct {
     tokens: []const Token,
@@ -92,7 +85,7 @@ pub const Parser = struct {
         return self.peek() == .eof;
     }
 
-    pub fn parse(self: *Parser, ast: *std.ArrayList(*const Expr)) !void {
+    pub fn parse(self: *Parser, ast: *std.ArrayList(*const Expr)) AnyParserError!void {
         while (!self.at_end()) {
             const expr = try self.statement();
             try ast.append(self.arena.allocator(), expr);
@@ -103,12 +96,12 @@ pub const Parser = struct {
         }
     }
 
-    pub fn statement(self: *Parser) !*const Expr {
+    pub fn statement(self: *Parser) AnyParserError!*const Expr {
         const expr = try self.expression();
         return expr;
     }
 
-    pub fn expression(self: *Parser) !*const Expr {
+    pub fn expression(self: *Parser) AnyParserError!*const Expr {
         if (self.peek() == .ident and self.peek_n(1) == .equals) {
             const name = self.tokens[self.cursor].data;
             self.advance();
@@ -157,7 +150,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn factor(self: *Parser) !*const Expr {
+    fn factor(self: *Parser) AnyParserError!*const Expr {
         var left = try self.primary();
 
         while (self.peek() == .star or self.peek() == .slash) {
@@ -168,6 +161,7 @@ pub const Parser = struct {
             const op = switch (op_token.tag) {
                 .star => BinaryOp.mul,
                 .slash => BinaryOp.div,
+                .at => BinaryOp.matmul,
                 else => unreachable,
             };
 
@@ -185,7 +179,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn primary(self: *Parser) !*const Expr {
+    fn primary(self: *Parser) AnyParserError!*const Expr {
         const current_token = self.tokens[self.cursor];
 
         switch (current_token.tag) {
@@ -195,11 +189,25 @@ pub const Parser = struct {
                 self.advance();
                 return variable_expr;
             },
+
+            .keyword => {
+                const kw = tokenizer.KeywordLookup.get(current_token.data).?;
+                self.advance();
+
+                try self.consume(.open_paren);
+                const on = try self.term();
+                try self.consume(.close_paren);
+
+                const unary_expr = try self.arena.allocator().create(Expr);
+                unary_expr.* = .{ .unary_op = .{ .op = kw, .expr = on } };
+
+                return unary_expr;
+            },
             else => return try self.literal(),
         }
     }
 
-    fn literal(self: *Parser) !*const Expr {
+    fn literal(self: *Parser) AnyParserError!*const Expr {
         const current_token = self.tokens[self.cursor];
         self.advance();
 
