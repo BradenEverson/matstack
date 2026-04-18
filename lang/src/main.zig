@@ -51,4 +51,5 @@ pub fn main(init: std.process.Init) !void {
 test {
     _ = @import("tokenizer.zig");
     _ = @import("parser.zig");
+    _ = @import("compiler.zig");
 }

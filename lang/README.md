@@ -21,3 +21,12 @@ b = [[1],[2],[3]]
 y = W @ x + b
 debug(y)
 ```
+
+## Compiler General Algorithm
+When we create the AST from this small language, traversing it creates intuitive translation rules into the VM bytecode. For example:
+
+- When a variable assignment expression is reached, we first evaluate the result instructions by performing their operations, then we can use a load_i with the next available scratch area slot to store that variable, and keep this index in a hashmap. Next time this variable is referenced, we evaluate it by performing a store_i and putting it back on the stack!
+
+- When a binary expression is reached, lhs is evaluated and all necessary instructions are appended, then all of rhs's instructions are appended before then appending the instruction itself!
+
+I'm mostly writing this here for myself later
