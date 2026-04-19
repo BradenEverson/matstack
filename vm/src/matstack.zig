@@ -6,6 +6,7 @@ const Allocator = std.mem.Allocator;
 pub const Tensor = @import("tensor.zig");
 pub const OperandStack = @import("stack.zig");
 pub const Instruction = @import("instruction.zig");
+pub const Command = Instruction.Command;
 
 pub const Operand = Tensor;
 
@@ -268,9 +269,9 @@ test "parse an entire VM then execute" {
         0x00, 0x00, 0x00, 0x41, // 8
 
         // Instructions
-        0x0e, 0x00, // LOAD A
-        0x0e, 0x01, // LOAD B
-        0x04, 0x00, // MATMUL
+        @intFromEnum(Command.load_const), 0x00, // LOAD A
+        @intFromEnum(Command.load_const), 0x01, // LOAD B
+        @intFromEnum(Command.matmul), 0x00, // MATMUL
     };
 
     var vm = try VirtualMachine.tryParse(arena.allocator(), bytes);
