@@ -41,9 +41,7 @@ pub const VmIR = struct {
     slotstack: SlotStack = .{},
 
     /// The constant pool.
-    /// TODO: We need to validate that a literal
-    /// provided does not have malformed dimensions
-    tensors: std.ArrayList(parser.Literal) = .empty,
+    tensors: std.ArrayList(matstack.Tensor) = .empty,
 
     instructions: std.ArrayList(matstack.Instruction) = .empty,
 
@@ -98,13 +96,8 @@ pub const VmIR = struct {
             },
 
             .literal => |l| {
-                // TODO: we need some way of hashing these tensor literals
-                // to see if they're already in the constant pool. Right now,
-                // if some arbitrary literal is used everywhere then the cpool
-                // will go crazy
-                //
-                // For now tho let's just do it easy, quick and dirty
-                try self.tensors.append(alloc, l);
+                const tensor = try literalToTensor(alloc, l);
+                try self.tensors.append(alloc, tensor);
                 const cpool_idx = self.tensors.items.len - 1;
 
                 try self.instructions.append(alloc, .{
@@ -116,8 +109,86 @@ pub const VmIR = struct {
     }
 };
 
-fn literalToTensor(literal: parser.Literal) !matstack.Tensor {
-    _ = literal;
+fn inferShape(
+    alloc: std.mem.Allocator,
+    literal: parser.Literal,
+) ![]usize {
+    switch (literal) {
+        .number => {
+            return alloc.alloc(usize, 0);
+        },
+
+        .multidim => |items| {
+            const n = items.items.len;
+
+            if (n == 0) {
+                const shape = try alloc.alloc(usize, 1);
+                shape[0] = 0;
+                return shape;
+            }
+
+            var child_shape: ?[]usize = null;
+            defer if (child_shape) |s| alloc.free(s);
+
+            for (items.items) |item_expr| {
+                if (item_expr.* != .literal)
+                    return error.MalformedTensor;
+
+                const this_shape = try inferShape(alloc, item_expr.literal);
+                defer alloc.free(this_shape);
+
+                if (child_shape == null) {
+                    child_shape = try alloc.dupe(usize, this_shape);
+                } else {
+                    if (!std.mem.eql(usize, child_shape.?, this_shape))
+                        return error.MalformedTensor;
+                }
+            }
+
+            const child = child_shape.?;
+            const shape = try alloc.alloc(usize, 1 + child.len);
+            shape[0] = n;
+            @memcpy(shape[1..], child);
+            return shape;
+        },
+    }
+}
+
+fn fillData(
+    data: []f32,
+    offset: usize,
+    literal: parser.Literal,
+) CompileError!usize {
+    switch (literal) {
+        .number => |v| {
+            data[offset] = v;
+            return offset + 1;
+        },
+        .multidim => |items| {
+            var cursor = offset;
+            for (items.items) |item_expr| {
+                if (item_expr.* != .literal)
+                    return error.MalformedTensor;
+                cursor = try fillData(data, cursor, item_expr.literal);
+            }
+            return cursor;
+        },
+    }
+}
+
+fn literalToTensor(
+    alloc: std.mem.Allocator,
+    literal: parser.Literal,
+) !matstack.Tensor {
+    const shape = try inferShape(alloc, literal);
+    defer alloc.free(shape);
+
+    var tensor = try matstack.Tensor.makeTensor(alloc, shape);
+    errdefer tensor.deinit(alloc);
+
+    _ = try fillData(tensor.data, 0, literal);
+
+    return tensor;
 }
 
 fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
