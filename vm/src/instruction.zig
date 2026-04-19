@@ -40,6 +40,8 @@ pub const Command = enum(u8) {
 
     // Debug
     debug_print = 0x15,
+
+    div = 0x16,
 };
 
 cmd: Command = .nop,

@@ -7,6 +7,7 @@ const parse = @import("parser.zig");
 const Parser = parse.Parser;
 
 const compiler = @import("compiler.zig");
+const VmIr = compiler.VmIR;
 
 pub fn main(init: std.process.Init) !void {
     const arena = init.arena;
@@ -42,11 +43,15 @@ pub fn main(init: std.process.Init) !void {
     defer parser.deinit();
 
     var ast: std.ArrayList(*const parse.Expr) = .empty;
-
     try parser.parse(&ast);
 
-    for (ast.items) |expr| {
-        std.debug.print("{any}\n", .{expr});
+    var vmir: VmIr = .{};
+    defer vmir.deinit(alloc);
+
+    try vmir.fromAst(alloc, ast.items);
+
+    for (vmir.instructions.items) |instr| {
+        std.debug.print("{} - {}\n", .{ instr.cmd, instr.extra });
     }
 }
 
