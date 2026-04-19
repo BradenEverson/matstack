@@ -116,6 +116,10 @@ pub const VmIR = struct {
     }
 };
 
+fn literalToTensor(literal: parser.Literal) !matstack.Tensor {
+    _ = literal;
+}
+
 fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
     return switch (op) {
         .zeros_like => unreachable, // TODO, should this be runtime or comptime?
