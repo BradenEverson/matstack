@@ -17,6 +17,8 @@ pub const Keyword = enum {
     ln,
     exp,
     sum,
+    for_kw,
+    in,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -29,6 +31,8 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "ln", .ln },
     .{ "exp", .exp },
     .{ "sum", .sum },
+    .{ "for", .for_kw },
+    .{ "in", .in },
 });
 
 pub const TokenTag = enum {
@@ -47,10 +51,15 @@ pub const TokenTag = enum {
     eof,
     open_bracket,
     open_paren,
+    open_brace,
     close_bracket,
     close_paren,
+    close_brace,
     comma,
     caret,
+    dot,
+    gt,
+    lt,
 };
 
 pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
@@ -63,10 +72,15 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ "!", .bang },
     .{ "[", .open_bracket },
     .{ "(", .open_paren },
+    .{ "{", .open_brace },
     .{ "]", .close_bracket },
     .{ ")", .close_paren },
+    .{ "}", .close_brace },
     .{ ",", .comma },
     .{ "^", .caret },
+    .{ ".", .dot },
+    .{ ">", .gt },
+    .{ "<", .lt },
 });
 
 pub const Token = struct {

@@ -123,6 +123,11 @@ pub const VmIR = struct {
                 try self.instructions.append(alloc, .{ .cmd = .load_i, .extra = slot });
             },
 
+            .loop => |l| {
+                // TODO
+                _ = l;
+            },
+
             .variable => |v| {
                 if (self.variable_allocations.get(v)) |slot| {
                     try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
@@ -288,6 +293,8 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
         .exp => .exp,
         .sum => .sum,
         .rand => unreachable, // Handled at compile time
+        .for_kw => unreachable, // not applicable
+        .in => unreachable, // not applicable
     };
 }
 

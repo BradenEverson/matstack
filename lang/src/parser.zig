@@ -10,6 +10,12 @@ pub const Expr = union(enum) {
     assignment: struct { name: []const u8, val: *const Expr },
     binary_op: struct { left: *const Expr, op: BinaryOp, right: *const Expr },
     unary_op: struct { op: tokenizer.Keyword, expr: *const Expr },
+    loop: struct {
+        counter: []const u8,
+        from: isize,
+        to: isize,
+        eval: std.ArrayList(*const Expr) = .empty,
+    },
     literal: Literal,
     rand_tensor: std.ArrayList(usize),
     variable: []const u8,
@@ -31,6 +37,7 @@ pub const BinaryOp = enum {
 
 pub const ParserError = error{
     UnexpectedToken,
+    UnexpectedKeywordHere,
     ExpectedSemicolon,
     OutOfTokens,
 };
@@ -106,6 +113,66 @@ pub const Parser = struct {
     }
 
     pub fn statement(self: *Parser) AnyParserError!*const Expr {
+        if (self.peek() == .keyword) {
+            const kw = tokenizer.KeywordLookup.get(self.tokens[self.cursor].data).?;
+            if (kw == .for_kw) {
+                // Parse a for loop
+                try self.consume(.keyword);
+                try self.consume(.open_paren);
+
+                // loop variable
+                const identifier = self.tokens[self.cursor].data;
+                try self.consume(.ident);
+
+                // in
+                // TODO: make this more restrictive. Technically right now
+                // it could be *any* keyword (for (i relu 0..5) would be valid lol)
+                try self.consume(.keyword);
+
+                // parse the range
+                const bottom = self.tokens[self.cursor].data;
+                try self.consume(.number);
+                const bottom_num: isize = try std.fmt.parseInt(isize, bottom, 10);
+
+                // cute lil arrow
+                try self.consume(.minus);
+                try self.consume(.gt);
+
+                const top = self.tokens[self.cursor].data;
+                try self.consume(.number);
+                const top_num: isize = try std.fmt.parseInt(isize, top, 10);
+
+                try self.consume(.close_paren);
+
+                const expr = try self.arena.allocator().create(Expr);
+                expr.* = .{ .loop = .{
+                    .counter = identifier,
+                    .from = bottom_num,
+                    .to = top_num,
+                } };
+
+                try self.consume(.open_brace);
+
+                while (self.peek() == .newline) {
+                    try self.consume(.newline);
+                }
+
+                // read the block
+                while (self.peek() != .close_brace) {
+                    const s = try self.statement();
+                    try expr.loop.eval.append(self.arena.allocator(), s);
+
+                    while (self.peek() == .newline) {
+                        try self.consume(.newline);
+                    }
+                }
+
+                try self.consume(.close_brace);
+
+                return expr;
+            }
+        }
+
         const expr = try self.expression();
         return expr;
     }
@@ -231,6 +298,7 @@ pub const Parser = struct {
                 self.advance();
 
                 switch (kw) {
+                    .for_kw, .in => return error.UnexpectedKeywordHere,
                     .rand => {
                         // parse out the shape of the random tensor
                         const rand_tensor = try self.arena.allocator().create(Expr);
