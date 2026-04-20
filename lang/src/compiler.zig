@@ -228,8 +228,8 @@ fn literalToTensor(
 
 fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
     return switch (op) {
-        .zeros_like => unreachable, // TODO, should this be runtime or comptime?
         .rand => unreachable, // TODO, this will be comptime
+        .zeros_like => .zeros_like,
         .debug => .debug_print,
         .softmax => .softmax,
         .relu => .relu,
