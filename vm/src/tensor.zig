@@ -25,6 +25,100 @@ offset: usize = 0,
 /// be [3, 1] to move down a row or col
 strides: []usize,
 
+/// Returns the broadcast output shape, or error if shapes are incompatible.
+/// Caller owns the returned slice.
+pub fn broadcastShape(
+    alloc: Allocator,
+    a_shape: []const usize,
+    b_shape: []const usize,
+) ![]usize {
+    const out_len = @max(a_shape.len, b_shape.len);
+    const out = try alloc.alloc(usize, out_len);
+    errdefer alloc.free(out);
+
+    for (0..out_len) |i| {
+        // Walk from the right
+        const a_dim = if (i < a_shape.len) a_shape[a_shape.len - 1 - i] else 1;
+        const b_dim = if (i < b_shape.len) b_shape[b_shape.len - 1 - i] else 1;
+
+        if (a_dim == b_dim) {
+            out[out_len - 1 - i] = a_dim;
+        } else if (a_dim == 1) {
+            out[out_len - 1 - i] = b_dim;
+        } else if (b_dim == 1) {
+            out[out_len - 1 - i] = a_dim;
+        } else {
+            return error.IncompatibleBroadcastShapes;
+        }
+    }
+
+    return out;
+}
+
+fn broadcastedFlatIdx(t: *const Tensor, out_idx: []const usize, out_len: usize) usize {
+    var flat: usize = t.offset;
+    const offset = out_len - t.shape.len;
+
+    for (0..t.shape.len) |i| {
+        const out_i = i + offset;
+        const idx = if (t.shape[i] == 1) 0 else out_idx[out_i];
+        flat += t.strides[i] * idx;
+    }
+
+    return flat;
+}
+
+pub fn broadcastApply(
+    a: *const Tensor,
+    b: *const Tensor,
+    alloc: Allocator,
+    comptime op: fn (f32, f32) f32,
+) !Tensor {
+    const out_shape = try broadcastShape(alloc, a.shape, b.shape);
+    defer alloc.free(out_shape);
+
+    var result = try makeTensor(alloc, out_shape);
+
+    var idx = try alloc.alloc(usize, out_shape.len);
+    defer alloc.free(idx);
+    @memset(idx, 0);
+
+    const total = result.data.len;
+    for (0..total) |flat_out| {
+        var rem = flat_out;
+        for (0..out_shape.len) |i| {
+            idx[i] = rem / result.strides[i];
+            rem %= result.strides[i];
+        }
+
+        const a_val = a.data[broadcastedFlatIdx(a, idx, out_shape.len)];
+        const b_val = b.data[broadcastedFlatIdx(b, idx, out_shape.len)];
+        result.data[flat_out] = op(a_val, b_val);
+    }
+
+    return result;
+}
+
+fn f32Add(a: f32, b: f32) f32 {
+    return a + b;
+}
+fn f32Sub(a: f32, b: f32) f32 {
+    return a - b;
+}
+fn f32Mul(a: f32, b: f32) f32 {
+    return a * b;
+}
+
+pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Add);
+}
+pub fn sub(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Sub);
+}
+pub fn mul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Mul);
+}
+
 pub fn deinit(self: *Tensor, alloc: Allocator) void {
     alloc.free(self.data);
     alloc.free(self.shape);
@@ -287,26 +381,12 @@ pub fn subInPlace(self: *Tensor, b: Tensor) !void {
         a_val.* -= b.data[i];
 }
 
-pub fn sub(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
-    var copy = try a.clone(alloc);
-    try copy.subInPlace(b);
-
-    return copy;
-}
-
 pub fn addInPlace(self: *Tensor, b: Tensor) !void {
     if (!std.mem.eql(usize, self.shape, b.shape))
         return error.OperandSizesDoNotAgree;
 
     for (self.data, 0..) |*a_val, i|
         a_val.* += b.data[i];
-}
-
-pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
-    var copy = try a.clone(alloc);
-    try copy.addInPlace(b);
-
-    return copy;
 }
 
 pub fn softmax(self: *const Tensor, alloc: Allocator) !Tensor {
@@ -554,4 +634,36 @@ test "read a tensor" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, A.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 2, 1, 0, 1, 0 }, A.data);
+}
+
+test "broadcast scalar against matrix" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var A: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ 1, 2, 3, 4, 5, 6 });
+
+    var S: Tensor = try .makeTensor(alloc, &[0]usize{});
+    S.data[0] = 2.0;
+
+    const C = try A.add(S, alloc);
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, C.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 3, 4, 5, 6, 7, 8 }, C.data);
+}
+
+test "broadcast row vector against matrix" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var A: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ 1, 2, 3, 4, 5, 6 });
+
+    var B: Tensor = try .makeTensor(alloc, &[2]usize{ 1, 3 });
+    B.setMany(&[_]f32{ 10, 20, 30 });
+
+    const C = try A.add(B, alloc);
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, C.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 11, 22, 33, 14, 25, 36 }, C.data);
 }
