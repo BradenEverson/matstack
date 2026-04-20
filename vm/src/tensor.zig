@@ -127,6 +127,10 @@ fn f32Pow(a: f32, b: f32) f32 {
     return std.math.pow(f32, a, b);
 }
 
+pub fn incInPlace(a: *Tensor) void {
+    for (a.data) |*val| val.* += 1.0;
+}
+
 pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Add);
 }

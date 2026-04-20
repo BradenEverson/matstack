@@ -117,15 +117,66 @@ pub const VmIR = struct {
                 // TODO: here maybe we check all future instructions for
                 // variables that are never referenced again and drop them
                 // from the slot if so to free up space!
-                const slot = try self.slotstack.pop();
+                const slot = self.variable_allocations.get(a.name) orelse try self.slotstack.pop();
 
                 try self.variable_allocations.put(alloc, a.name, slot);
                 try self.instructions.append(alloc, .{ .cmd = .load_i, .extra = slot });
             },
 
             .loop => |l| {
-                // TODO
-                _ = l;
+                // Create loop variable
+                const start = try matstack.Tensor.makeTensor(alloc, &[0]usize{});
+                start.data[0] = @floatFromInt(l.from);
+                const start_idx = try self.registerTensor(alloc, start);
+
+                const end = try matstack.Tensor.makeTensor(alloc, &[0]usize{});
+                end.data[0] = @floatFromInt(l.to);
+                const end_idx = try self.registerTensor(alloc, end);
+
+                const slot = try self.slotstack.pop();
+                try self.variable_allocations.put(alloc, l.counter, slot);
+
+                try self.instructions.append(alloc, .{
+                    .cmd = .load_const,
+                    .extra = @truncate(start_idx),
+                });
+
+                try self.instructions.append(alloc, .{
+                    .cmd = .load_i,
+                    .extra = @truncate(slot),
+                });
+
+                const s = self.instructions.items.len;
+
+                // Perform all instructions stored in the block
+                for (l.eval.items) |e| {
+                    try self.evalExpr(io, alloc, e);
+                }
+
+                // Do a comparison on loop variable and end point
+                // branch back to start of eval if not equal
+                try self.instructions.append(alloc, .{
+                    .cmd = .load_const,
+                    .extra = @truncate(end_idx),
+                });
+                try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .inc });
+                try self.instructions.append(alloc, .{ .cmd = .load_i, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .sub });
+
+                const len_instr = self.instructions.items.len - s;
+
+                const len: u32 = @truncate(len_instr);
+                const len_i: isize = @intCast(len + 1);
+                const jump: isize = 0 - len_i;
+                const jump_i8: i8 = @truncate(jump);
+                const jump_u8: u8 = @bitCast(jump_i8);
+                try self.instructions.append(alloc, .{ .cmd = .branch_ne, .extra = jump_u8 });
+
+                // when we're done, counter variable is out of scope!
+                try self.slotstack.reused.append(alloc, slot);
+                _ = self.variable_allocations.remove(l.counter);
             },
 
             .variable => |v| {
@@ -139,12 +190,7 @@ pub const VmIR = struct {
             .literal => |l| {
                 const tensor = try literalToTensor(alloc, l);
 
-                var cpool_idx = self.tensors.items.len;
-                if (self.findTensor(tensor)) |past_idx| {
-                    cpool_idx = past_idx;
-                } else {
-                    try self.tensors.append(alloc, tensor);
-                }
+                const cpool_idx = try self.registerTensor(alloc, tensor);
 
                 try self.instructions.append(alloc, .{
                     .cmd = .load_const,
@@ -152,6 +198,17 @@ pub const VmIR = struct {
                 });
             },
         }
+    }
+
+    fn registerTensor(self: *VmIR, alloc: std.mem.Allocator, tensor: matstack.Tensor) !usize {
+        var cpool_idx = self.tensors.items.len;
+        if (self.findTensor(tensor)) |past_idx| {
+            cpool_idx = past_idx;
+        } else {
+            try self.tensors.append(alloc, tensor);
+        }
+
+        return cpool_idx;
     }
 
     pub fn findTensor(self: *const VmIR, tensor: matstack.Tensor) ?usize {

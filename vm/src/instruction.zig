@@ -4,6 +4,7 @@ pub const Command = enum(u8) {
     // Data processing
     nop,
     add,
+    inc,
     sub,
     /// element-wise multiplication
     /// broadcasts to enable scalar mul

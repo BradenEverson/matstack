@@ -108,6 +108,8 @@ pub const VirtualMachine = struct {
         const cmd = instr.cmd;
         const extra = instr.extra;
 
+        std.debug.print("{}\n", .{cmd});
+
         vm.pc += 1;
 
         switch (cmd) {
@@ -136,6 +138,11 @@ pub const VirtualMachine = struct {
 
                 const res = try lhs.add(rhs, alloc);
                 try vm.stack.push(res);
+            },
+
+            .inc => {
+                var val = try vm.stack.peek();
+                val.incInPlace();
             },
 
             .sub => {
