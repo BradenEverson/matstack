@@ -108,6 +108,9 @@ fn f32Sub(a: f32, b: f32) f32 {
 fn f32Mul(a: f32, b: f32) f32 {
     return a * b;
 }
+fn f32Pow(a: f32, b: f32) f32 {
+    return std.math.pow(f32, a, b);
+}
 
 pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Add);
@@ -117,6 +120,9 @@ pub fn sub(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
 }
 pub fn mul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Mul);
+}
+pub fn pow(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Pow);
 }
 
 pub fn deinit(self: *Tensor, alloc: Allocator) void {
