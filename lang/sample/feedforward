@@ -14,4 +14,10 @@ h = relu(u)
 v = M @ h + c
 L = sum((y - v)^2) / 2
 
-debug(L)
+S1 = epsilon * sum(W^2)
+S2 = epsilon * sum(M^2)
+
+S = S1 + S2
+J = L + S
+
+debug(J)
