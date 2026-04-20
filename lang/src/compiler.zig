@@ -111,6 +111,28 @@ pub const VmIR = struct {
     pub fn toBytes(self: *const VmIR, alloc: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
         // Write out the constant pool
 
+        for (self.tensors.items) |tensor| {
+            try tensor.toBytes(alloc, out);
+        }
+
+        const len: u32 = @truncate(out.items.len);
+        const tensor_len: u32 = @truncate(self.tensors.items.len);
+
+        var bytes: [4]u8 = undefined;
+        std.mem.writeInt(u32, &bytes, tensor_len, .little);
+
+        try out.insert(alloc, 0, bytes[3]);
+        try out.insert(alloc, 0, bytes[2]);
+        try out.insert(alloc, 0, bytes[1]);
+        try out.insert(alloc, 0, bytes[0]);
+
+        std.mem.writeInt(u32, &bytes, len, .little);
+
+        try out.insert(alloc, 0, bytes[3]);
+        try out.insert(alloc, 0, bytes[2]);
+        try out.insert(alloc, 0, bytes[1]);
+        try out.insert(alloc, 0, bytes[0]);
+
         // Begin dumping instructions
         for (self.instructions.items) |instruction| {
             const cmd: u8 = @intFromEnum(instruction.cmd);

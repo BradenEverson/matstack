@@ -199,6 +199,11 @@ pub const VirtualMachine = struct {
                 }
             },
 
+            .debug_print => {
+                const top = try vm.stack.peek();
+                std.debug.print("{any}\n", .{top});
+            },
+
             else => {}, // TODO
         }
 

@@ -57,6 +57,25 @@ pub fn main(init: std.process.Init) !void {
     for (vmir.instructions.items) |instr| {
         std.debug.print("{} - {}\n", .{ instr.cmd, instr.extra });
     }
+
+    var bytes: std.ArrayList(u8) = .empty;
+    defer bytes.deinit(alloc);
+
+    try vmir.toBytes(alloc, &bytes);
+
+    const output = args.next() orelse "out";
+    var file = try std.Io.Dir.cwd().createFile(io, output, .{});
+    defer file.close(io);
+
+    var buffer: [1024]u8 = undefined;
+    var writer = file.writerStreaming(io, &buffer);
+
+    var write = &writer.interface;
+    for (bytes.items) |byte| {
+        try write.writeByte(byte);
+    }
+
+    try writer.flush();
 }
 
 test {

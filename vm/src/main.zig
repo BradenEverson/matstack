@@ -20,8 +20,6 @@ pub fn main(init: std.process.Init) !void {
         );
         errdefer alloc.free(bytecode);
 
-        std.debug.print("{X}\n", .{bytecode});
-
         var vm = try VirtualMachine.tryParse(alloc, bytecode);
         while (!(try vm.step(arena.allocator()))) {}
     } else {

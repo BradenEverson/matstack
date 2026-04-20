@@ -70,6 +70,45 @@ pub fn fromBytes(alloc: Allocator, buf: []const u8) !struct { Tensor, []const u8
     };
 }
 
+pub fn toBytes(self: *const Tensor, alloc: Allocator, out: *std.ArrayList(u8)) !void {
+    if (self.shape.len == 0) {
+        // 1D
+        try out.append(alloc, 1);
+        // Single dimension, 1 as a u32
+        try out.append(alloc, 0x01);
+        try out.append(alloc, 0x00);
+        try out.append(alloc, 0x00);
+        try out.append(alloc, 0x00);
+    } else {
+        const dims: u8 = @truncate(self.shape.len);
+        try out.append(alloc, dims);
+
+        for (self.shape) |dim| {
+            const d: u32 = @truncate(dim);
+            var bytes: [4]u8 = undefined;
+            std.mem.writeInt(u32, &bytes, d, .little);
+
+            try out.append(alloc, bytes[0]);
+            try out.append(alloc, bytes[1]);
+            try out.append(alloc, bytes[2]);
+            try out.append(alloc, bytes[3]);
+        }
+    }
+
+    var bytes: [4]u8 = undefined;
+
+    for (self.data) |val| {
+        const bits: u32 = @bitCast(val);
+
+        std.mem.writeInt(u32, &bytes, bits, .little);
+
+        try out.append(alloc, bytes[0]);
+        try out.append(alloc, bytes[1]);
+        try out.append(alloc, bytes[2]);
+        try out.append(alloc, bytes[3]);
+    }
+}
+
 pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
     const shapeOwned = try alloc.dupe(usize, shape);
     errdefer alloc.free(shapeOwned);
