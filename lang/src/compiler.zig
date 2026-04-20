@@ -5,6 +5,21 @@ const parser = @import("parser.zig");
 const tokenizer = @import("tokenizer.zig");
 const matstack = @import("matstack");
 
+var prng: ?std.Random.DefaultPrng = null;
+
+fn getRand(io: std.Io) std.Random {
+    if (prng) |*r| {
+        return r.random();
+    } else {
+        prng = .init(blk: {
+            var seed: u64 = undefined;
+            io.random(std.mem.asBytes(&seed));
+            break :blk seed;
+        });
+        return prng.?.random();
+    }
+}
+
 pub const CompileError = error{
     /// when a provided tensor literal is inconsistently sized, such as
     /// [[1,2,3], [1,2], [1,2,3]]
@@ -52,39 +67,52 @@ pub const VmIR = struct {
         self.tensors.deinit(alloc);
     }
 
-    pub fn fromAst(self: *VmIR, alloc: std.mem.Allocator, ast: []*const parser.Expr) !void {
+    pub fn fromAst(self: *VmIR, io: std.Io, alloc: std.mem.Allocator, ast: []*const parser.Expr) !void {
         for (ast) |expr| {
-            try self.evalExpr(alloc, expr);
+            try self.evalExpr(io, alloc, expr);
         }
     }
 
-    pub fn evalExpr(self: *VmIR, alloc: std.mem.Allocator, expr: *const parser.Expr) !void {
+    pub fn evalExpr(self: *VmIR, io: std.Io, alloc: std.mem.Allocator, expr: *const parser.Expr) !void {
         switch (expr.*) {
             .binary_op => |b| {
-                try self.evalExpr(alloc, b.left);
-                try self.evalExpr(alloc, b.right);
+                try self.evalExpr(io, alloc, b.left);
+                try self.evalExpr(io, alloc, b.right);
 
                 const cmd = opToCmd(b.op);
                 try self.instructions.append(alloc, .{ .cmd = cmd });
             },
 
             .unary_op => |u| {
-                try self.evalExpr(alloc, u.expr);
+                try self.evalExpr(io, alloc, u.expr);
 
-                switch (u.op) {
-                    .rand => {
-                        // Create a random tensor and push it to the stack
-                    },
+                const cmd = keywordToCmd(u.op);
+                try self.instructions.append(alloc, .{ .cmd = cmd });
+            },
 
-                    else => {
-                        const cmd = keywordToCmd(u.op);
-                        try self.instructions.append(alloc, .{ .cmd = cmd });
-                    },
+            .rand_tensor => |shape| {
+                const tensor = try matstack.Tensor.makeTensor(
+                    alloc,
+                    shape.items[0..shape.items.len],
+                );
+
+                var rand = getRand(io);
+
+                for (tensor.data) |*val| {
+                    const r = rand.float(f32);
+                    val.* = r;
                 }
+
+                try self.tensors.append(alloc, tensor);
+
+                try self.instructions.append(alloc, .{
+                    .cmd = .load_const,
+                    .extra = @truncate(self.tensors.items.len - 1),
+                });
             },
 
             .assignment => |a| {
-                try self.evalExpr(alloc, a.val);
+                try self.evalExpr(io, alloc, a.val);
 
                 // TODO: here maybe we check all future instructions for
                 // variables that are never referenced again and drop them

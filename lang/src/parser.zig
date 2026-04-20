@@ -11,6 +11,7 @@ pub const Expr = union(enum) {
     binary_op: struct { left: *const Expr, op: BinaryOp, right: *const Expr },
     unary_op: struct { op: tokenizer.Keyword, expr: *const Expr },
     literal: Literal,
+    rand_tensor: std.ArrayList(usize),
     variable: []const u8,
 };
 
@@ -34,7 +35,7 @@ pub const ParserError = error{
     OutOfTokens,
 };
 
-const AnyParserError = ParserError || std.mem.Allocator.Error || std.fmt.ParseFloatError;
+const AnyParserError = ParserError || std.mem.Allocator.Error || std.fmt.ParseFloatError || std.fmt.ParseIntError;
 
 pub const Parser = struct {
     tokens: []const Token,
@@ -51,6 +52,13 @@ pub const Parser = struct {
 
     pub fn deinit(self: *Parser) void {
         self.arena.deinit();
+    }
+
+    fn peekTok(self: *const Parser) Token {
+        if (self.cursor >= self.tokens.len) {
+            return .{ .tag = .eof };
+        }
+        return self.tokens[self.cursor];
     }
 
     fn peek(self: *const Parser) TokenTag {
@@ -222,14 +230,39 @@ pub const Parser = struct {
                 const kw = tokenizer.KeywordLookup.get(current_token.data).?;
                 self.advance();
 
-                try self.consume(.open_paren);
-                const on = try self.term();
-                try self.consume(.close_paren);
+                switch (kw) {
+                    .rand => {
+                        // parse out the shape of the random tensor
+                        const rand_tensor = try self.arena.allocator().create(Expr);
+                        rand_tensor.* = .{ .rand_tensor = .empty };
 
-                const unary_expr = try self.arena.allocator().create(Expr);
-                unary_expr.* = .{ .unary_op = .{ .op = kw, .expr = on } };
+                        try self.consume(.open_paren);
 
-                return unary_expr;
+                        while (self.peek() != .close_paren) {
+                            const dim = self.peekTok();
+                            try self.consume(.number);
+
+                            const dim_usize = try std.fmt.parseInt(usize, dim.data, 10);
+                            try rand_tensor.rand_tensor.append(self.arena.allocator(), dim_usize);
+
+                            if (self.peek() != .close_paren)
+                                try self.consume(.comma);
+                        }
+
+                        try self.consume(.close_paren);
+                        return rand_tensor;
+                    },
+                    else => {
+                        try self.consume(.open_paren);
+                        const on = try self.term();
+                        try self.consume(.close_paren);
+
+                        const unary_expr = try self.arena.allocator().create(Expr);
+                        unary_expr.* = .{ .unary_op = .{ .op = kw, .expr = on } };
+
+                        return unary_expr;
+                    },
+                }
             },
 
             .open_paren => {

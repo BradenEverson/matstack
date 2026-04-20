@@ -48,7 +48,7 @@ pub fn main(init: std.process.Init) !void {
     var vmir: VmIr = .{};
     defer vmir.deinit(alloc);
 
-    try vmir.fromAst(alloc, ast.items);
+    try vmir.fromAst(init.io, alloc, ast.items);
 
     for (vmir.tensors.items) |tensor| {
         std.debug.print("{any}\n", .{tensor});
