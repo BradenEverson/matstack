@@ -213,7 +213,16 @@ pub const VirtualMachine = struct {
             },
 
             .load_i => {
-                const res = try vm.stack.pop();
+                var res = try vm.stack.pop();
+                defer res.deinit(alloc);
+
+                const idx = @as(usize, extra);
+
+                vm.scratch_area[idx] = try res.clone(alloc);
+            },
+
+            .clone_i => {
+                const res = try vm.stack.peek();
                 const idx = @as(usize, extra);
 
                 vm.scratch_area[idx] = try res.clone(alloc);

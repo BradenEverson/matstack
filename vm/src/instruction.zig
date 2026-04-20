@@ -34,6 +34,8 @@ pub const Command = enum(u8) {
     /// a provided index into the scratch
     /// area
     load_i,
+    /// Like load, but doesn't pop the tensor off
+    clone_i,
     /// Grabs and pushes the tensor at a provided
     /// index in the scratch area onto the stack
     store_i,
