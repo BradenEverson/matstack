@@ -200,6 +200,13 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .zeros_like => {
+                var res = try vm.stack.pop();
+                defer res.deinit(alloc);
+
+                try vm.stack.push(try res.zerosLike(alloc));
+            },
+
             .load_i => {
                 const res = try vm.stack.pop();
                 const idx = @as(usize, extra);

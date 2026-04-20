@@ -215,6 +215,12 @@ pub fn toBytes(self: *const Tensor, alloc: Allocator, out: *std.ArrayList(u8)) !
     }
 }
 
+pub fn zerosLike(ref: Tensor, alloc: Allocator) !Tensor {
+    const cloned = try ref.clone(alloc);
+    for (cloned.data) |*val| val.* = 0;
+    return cloned;
+}
+
 pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
     const shapeOwned = try alloc.dupe(usize, shape);
     errdefer alloc.free(shapeOwned);
