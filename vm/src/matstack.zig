@@ -108,6 +108,8 @@ pub const VirtualMachine = struct {
         const cmd = instr.cmd;
         const extra = instr.extra;
 
+        std.debug.print("{}\n", .{cmd});
+
         vm.pc += 1;
 
         switch (cmd) {
@@ -132,9 +134,10 @@ pub const VirtualMachine = struct {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
 
-                try lhs.addInPlace(rhs);
-                try vm.stack.push(lhs);
+                const res = try lhs.add(rhs, alloc);
+                try vm.stack.push(res);
             },
 
             .sub => {
@@ -154,7 +157,7 @@ pub const VirtualMachine = struct {
             },
 
             .load_i => {
-                const res = try vm.stack.peek();
+                const res = try vm.stack.pop();
                 const idx = @as(usize, extra);
 
                 vm.scratch_area[idx] = try res.clone(alloc);

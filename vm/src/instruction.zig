@@ -19,6 +19,7 @@ pub const Command = enum(u8) {
     dup,
     swap,
     exp,
+    pow,
     log,
     zeros_like,
     /// Sums along an axis provided in `extra`
@@ -26,7 +27,7 @@ pub const Command = enum(u8) {
 
     // Memory
     load_const,
-    /// Clones and loads the top tensor to
+    /// Pops and loads the top tensor to
     /// a provided index into the scratch
     /// area
     load_i,
