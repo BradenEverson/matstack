@@ -107,6 +107,19 @@ pub const VmIR = struct {
             },
         }
     }
+
+    pub fn toBytes(self: *const VmIR, alloc: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+        // Write out the constant pool
+
+        // Begin dumping instructions
+        for (self.instructions.items) |instruction| {
+            const cmd: u8 = @intFromEnum(instruction.cmd);
+            const extra = instruction.extra;
+
+            try out.append(alloc, cmd);
+            try out.append(alloc, extra);
+        }
+    }
 };
 
 fn inferShape(
