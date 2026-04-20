@@ -67,13 +67,23 @@ pub const VmIR = struct {
         self.tensors.deinit(alloc);
     }
 
-    pub fn fromAst(self: *VmIR, io: std.Io, alloc: std.mem.Allocator, ast: []*const parser.Expr) !void {
+    pub fn fromAst(
+        self: *VmIR,
+        io: std.Io,
+        alloc: std.mem.Allocator,
+        ast: []*const parser.Expr,
+    ) !void {
         for (ast) |expr| {
             try self.evalExpr(io, alloc, expr);
         }
     }
 
-    pub fn evalExpr(self: *VmIR, io: std.Io, alloc: std.mem.Allocator, expr: *const parser.Expr) !void {
+    pub fn evalExpr(
+        self: *VmIR,
+        io: std.Io,
+        alloc: std.mem.Allocator,
+        expr: *const parser.Expr,
+    ) !void {
         switch (expr.*) {
             .binary_op => |b| {
                 try self.evalExpr(io, alloc, b.left);
@@ -120,7 +130,10 @@ pub const VmIR = struct {
                 const slot = self.variable_allocations.get(a.name) orelse try self.slotstack.pop();
 
                 try self.variable_allocations.put(alloc, a.name, slot);
-                try self.instructions.append(alloc, .{ .cmd = .load_i, .extra = slot });
+                try self.instructions.append(
+                    alloc,
+                    .{ .cmd = .load_i, .extra = slot },
+                );
             },
 
             .loop => |l| {
@@ -200,7 +213,11 @@ pub const VmIR = struct {
         }
     }
 
-    fn registerTensor(self: *VmIR, alloc: std.mem.Allocator, tensor: matstack.Tensor) !usize {
+    fn registerTensor(
+        self: *VmIR,
+        alloc: std.mem.Allocator,
+        tensor: matstack.Tensor,
+    ) !usize {
         var cpool_idx = self.tensors.items.len;
         if (self.findTensor(tensor)) |past_idx| {
             cpool_idx = past_idx;
@@ -221,7 +238,11 @@ pub const VmIR = struct {
         return null;
     }
 
-    pub fn toBytes(self: *const VmIR, alloc: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+    pub fn toBytes(
+        self: *const VmIR,
+        alloc: std.mem.Allocator,
+        out: *std.ArrayList(u8),
+    ) !void {
         // Write out the constant pool
 
         for (self.tensors.items) |tensor| {
@@ -317,7 +338,11 @@ fn fillData(
             for (items.items) |item_expr| {
                 if (item_expr.* != .literal)
                     return error.MalformedTensor;
-                cursor = try fillData(data, cursor, item_expr.literal);
+                cursor = try fillData(
+                    data,
+                    cursor,
+                    item_expr.literal,
+                );
             }
             return cursor;
         },
