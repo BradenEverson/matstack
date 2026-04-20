@@ -71,8 +71,16 @@ pub const VmIR = struct {
             .unary_op => |u| {
                 try self.evalExpr(alloc, u.expr);
 
-                const cmd = keywordToCmd(u.op);
-                try self.instructions.append(alloc, .{ .cmd = cmd });
+                switch (u.op) {
+                    .rand => {
+                        // Create a random tensor and push it to the stack
+                    },
+
+                    else => {
+                        const cmd = keywordToCmd(u.op);
+                        try self.instructions.append(alloc, .{ .cmd = cmd });
+                    },
+                }
             },
 
             .assignment => |a| {
@@ -243,7 +251,6 @@ fn literalToTensor(
 
 fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
     return switch (op) {
-        .rand => unreachable, // TODO, this will be comptime
         .zeros_like => .zeros_like,
         .debug => .debug_print,
         .softmax => .softmax,
@@ -252,6 +259,7 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
         .ln => .log,
         .exp => .exp,
         .sum => .sum,
+        .rand => unreachable, // Handled at compile time
     };
 }
 
