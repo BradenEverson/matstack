@@ -108,6 +108,9 @@ fn f32Sub(a: f32, b: f32) f32 {
 fn f32Mul(a: f32, b: f32) f32 {
     return a * b;
 }
+fn f32Div(a: f32, b: f32) f32 {
+    return a / b;
+}
 fn f32Pow(a: f32, b: f32) f32 {
     return std.math.pow(f32, a, b);
 }
@@ -123,6 +126,9 @@ pub fn mul(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
 }
 pub fn pow(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Pow);
+}
+pub fn div(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Div);
 }
 
 pub fn deinit(self: *Tensor, alloc: Allocator) void {
@@ -295,6 +301,14 @@ pub fn isZero(a: Tensor) bool {
     }
 
     return allZeros;
+}
+
+pub fn sumAll(self: *const Tensor, alloc: Allocator) !Tensor {
+    var result = try makeTensor(alloc, &[0]usize{});
+
+    for (self.data) |val| result.data[0] += val;
+
+    return result;
 }
 
 pub fn sumReduceRows(self: *const Tensor, alloc: Allocator) !Tensor {
@@ -672,4 +686,17 @@ test "broadcast row vector against matrix" {
     const C = try A.add(B, alloc);
     try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, C.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 11, 22, 33, 14, 25, 36 }, C.data);
+}
+
+test "sum" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var A: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ 1, 2, 3, 4, 5, 6 });
+
+    const D = try A.sumAll(alloc);
+    try std.testing.expectEqualSlices(usize, &[_]usize{}, D.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{1 + 2 + 3 + 4 + 5 + 6}, D.data);
 }

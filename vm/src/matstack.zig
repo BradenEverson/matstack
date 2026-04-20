@@ -108,8 +108,6 @@ pub const VirtualMachine = struct {
         const cmd = instr.cmd;
         const extra = instr.extra;
 
-        std.debug.print("{}\n", .{cmd});
-
         vm.pc += 1;
 
         switch (cmd) {
@@ -144,9 +142,55 @@ pub const VirtualMachine = struct {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
 
-                try lhs.subInPlace(rhs);
-                try vm.stack.push(lhs);
+                const res = try lhs.sub(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .div => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.div(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .mul => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.mul(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .pow => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.pow(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .sum => {
+                var on = try vm.stack.pop();
+                defer on.deinit(alloc);
+
+                const res = try on.sumAll(alloc);
+                try vm.stack.push(res);
+            },
+
+            .relu => {
+                var res = try vm.stack.pop();
+                res.inPlaceRelu();
+
+                try vm.stack.push(res);
             },
 
             .transpose => {
@@ -166,13 +210,6 @@ pub const VirtualMachine = struct {
             .store_i => {
                 const idx = @as(usize, extra);
                 const res = try vm.scratch_area[idx].clone(alloc);
-
-                try vm.stack.push(res);
-            },
-
-            .relu => {
-                var res = try vm.stack.pop();
-                res.inPlaceRelu();
 
                 try vm.stack.push(res);
             },

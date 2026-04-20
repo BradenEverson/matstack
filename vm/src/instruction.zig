@@ -24,6 +24,8 @@ pub const Command = enum(u8) {
     zeros_like,
     /// Sums along an axis provided in `extra`
     sum_reduce,
+    /// just does a plain ol' sum
+    sum,
 
     // Memory
     load_const,
