@@ -97,8 +97,13 @@ pub const VmIR = struct {
 
             .literal => |l| {
                 const tensor = try literalToTensor(alloc, l);
-                try self.tensors.append(alloc, tensor);
-                const cpool_idx = self.tensors.items.len - 1;
+
+                var cpool_idx = self.tensors.items.len;
+                if (self.findTensor(tensor)) |past_idx| {
+                    cpool_idx = past_idx;
+                } else {
+                    try self.tensors.append(alloc, tensor);
+                }
 
                 try self.instructions.append(alloc, .{
                     .cmd = .load_const,
@@ -106,6 +111,16 @@ pub const VmIR = struct {
                 });
             },
         }
+    }
+
+    pub fn findTensor(self: *const VmIR, tensor: matstack.Tensor) ?usize {
+        for (self.tensors.items, 0..) |check, idx| {
+            if (tensor.equal(check)) {
+                return idx;
+            }
+        }
+
+        return null;
     }
 
     pub fn toBytes(self: *const VmIR, alloc: std.mem.Allocator, out: *std.ArrayList(u8)) !void {

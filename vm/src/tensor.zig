@@ -25,6 +25,18 @@ offset: usize = 0,
 /// be [3, 1] to move down a row or col
 strides: []usize,
 
+/// Equality checks used specifically by the compiler for
+/// reducing the size of the constant pool when  redundant tensors
+/// are used.
+///
+/// Because this is coming from constant compiler-generated
+/// tensors, we can make a few assumptions. For one, the stride
+/// will be unmutated as well as the offset. This means
+/// all we need to compare is the shape and data
+pub fn equal(A: Tensor, B: Tensor) bool {
+    return std.mem.eql(usize, A.shape, B.shape) and std.mem.eql(f32, A.data, B.data);
+}
+
 /// Returns the broadcast output shape, or error if shapes are incompatible.
 /// Caller owns the returned slice.
 pub fn broadcastShape(
