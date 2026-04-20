@@ -108,8 +108,6 @@ pub const VirtualMachine = struct {
         const cmd = instr.cmd;
         const extra = instr.extra;
 
-        std.debug.print("{}\n", .{cmd});
-
         vm.pc += 1;
 
         switch (cmd) {
