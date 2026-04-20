@@ -16,6 +16,7 @@ pub const Keyword = enum {
     cross_entropy,
     ln,
     exp,
+    sum,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -27,6 +28,7 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "cross_entropy", .cross_entropy },
     .{ "ln", .ln },
     .{ "exp", .exp },
+    .{ "sum", .sum },
 });
 
 pub const TokenTag = enum {
@@ -48,6 +50,7 @@ pub const TokenTag = enum {
     close_bracket,
     close_paren,
     comma,
+    caret,
 };
 
 pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
@@ -63,6 +66,7 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ "]", .close_bracket },
     .{ ")", .close_paren },
     .{ ",", .comma },
+    .{ "^", .caret },
 });
 
 pub const Token = struct {

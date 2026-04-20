@@ -25,6 +25,7 @@ pub const BinaryOp = enum {
     mul,
     div,
     matmul,
+    pow,
 };
 
 pub const ParserError = error{
@@ -151,17 +152,44 @@ pub const Parser = struct {
     }
 
     fn factor(self: *Parser) AnyParserError!*const Expr {
-        var left = try self.primary();
+        var left = try self.power();
 
         while (self.peek() == .star or self.peek() == .slash or self.peek() == .at) {
             const op_token = self.tokens[self.cursor];
             self.advance();
-            const right = try self.primary();
+            const right = try self.power();
 
             const op = switch (op_token.tag) {
                 .star => BinaryOp.mul,
                 .slash => BinaryOp.div,
                 .at => BinaryOp.matmul,
+                else => unreachable,
+            };
+
+            const binary_op_expr = try self.arena.allocator().create(Expr);
+            binary_op_expr.* = .{
+                .binary_op = .{
+                    .left = left,
+                    .op = op,
+                    .right = right,
+                },
+            };
+            left = binary_op_expr;
+        }
+
+        return left;
+    }
+
+    fn power(self: *Parser) AnyParserError!*const Expr {
+        var left = try self.primary();
+
+        while (self.peek() == .caret) {
+            const op_token = self.tokens[self.cursor];
+            self.advance();
+            const right = try self.primary();
+
+            const op = switch (op_token.tag) {
+                .caret => BinaryOp.pow,
                 else => unreachable,
             };
 
@@ -203,6 +231,15 @@ pub const Parser = struct {
 
                 return unary_expr;
             },
+
+            .open_paren => {
+                self.advance();
+                const inner = self.term();
+                try self.consume(.close_paren);
+
+                return inner;
+            },
+
             else => return try self.literal(),
         }
     }

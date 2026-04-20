@@ -12,4 +12,6 @@ u = W @ x + b
 h = relu(u)
 
 v = M @ h + c
-debug(v)
+L = sum((y - v)^2) / 2
+
+debug(L)

@@ -236,6 +236,7 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
         .cross_entropy => .cross_entropy,
         .ln => .log,
         .exp => .exp,
+        .sum => .sum,
     };
 }
 
@@ -246,5 +247,6 @@ fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
         .matmul => .matmul,
         .mul => .mul,
         .sub => .sub,
+        .pow => .pow,
     };
 }
