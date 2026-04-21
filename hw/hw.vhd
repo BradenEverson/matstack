@@ -10,7 +10,8 @@ entity HW is
     port (
         CLK : in  std_logic;
         RST : in  std_logic;
-        HALT : out std_logic
+        HALT : out std_logic;
+		  TENSOR_OUT: out std_logic_vector(31 downto 0)
     );
 end entity;
 
@@ -57,8 +58,8 @@ architecture PIPELINE of HW is
     signal stack_valid : std_logic;
     signal stack_err   : std_logic;
 
-    type regfile_t is array(0 to 15) of tensor_t;
-    signal regfile : regfile_t;
+    type scratch_area_t is array(0 to SCRATCH_AREA) of tensor_t;
+    signal scratch_area : scratch_area_t;
 
     signal operand_a : tensor_t;
     signal operand_b : tensor_t;
@@ -69,6 +70,8 @@ architecture PIPELINE of HW is
 begin
 
     irom_addr <= std_logic_vector(pc);
+	 
+	 TENSOR_OUT <= scratch_area(0).data(0);
 
     U_IROM : entity work.IROM
         port map (ADDR => irom_addr, Q => irom_q);
@@ -143,7 +146,7 @@ begin
                         when INSTR_STORE_I =>
                             state <= S_LOAD_REG;
 
-                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL	=>
+                        when INSTR_ADD	=> -- TODO: all the ALU ops here
                             state <= S_STACK_POP_A;
 
                         when INSTR_DEBUG_PRINT => -- use as a halt for now
@@ -180,12 +183,12 @@ begin
                 when S_WAIT_STORE =>
                     stack_op <= "00";
                     if stack_valid = '1' then
-                        regfile(to_integer(unsigned(operand))) <= stack_pop;
+                        scratch_area(to_integer(unsigned(operand))) <= stack_pop;
                         state <= S_FETCH;
                     end if;
 
                 when S_LOAD_REG =>
-                    stack_push <= regfile(to_integer(unsigned(operand)));
+                    stack_push <= scratch_area(to_integer(unsigned(operand)));
                     stack_op   <= "01";
                     state      <= S_STACK_PUSH;
 
