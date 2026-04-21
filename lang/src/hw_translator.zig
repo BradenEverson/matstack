@@ -247,7 +247,7 @@ pub fn main(init: std.process.Init) !void {
     try writer.flush();
 
     inline for (@typeInfo(matstack.Instruction.Command).@"enum".fields) |instr| {
-        try write.print("\tconstant INSTR_{s}: std_logic_vector(3 downto 0) := x\"{X:0>2}\";\n", .{ instr.name, instr.value });
+        try write.print("\tconstant INSTR_{s}: std_logic_vector(7 downto 0) := x\"{X:0>2}\";\n", .{ instr.name, instr.value });
     }
 
     try write.print("\n{s}\n", .{footer_consts});
