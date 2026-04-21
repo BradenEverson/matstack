@@ -8,7 +8,7 @@ const MAX_HW_DIM: usize = 4;
 const MAX_HW_ELEMS: usize = 256;
 const MAX_CPOOL: usize = 64;
 
-const header =
+const header_cpool =
     \\-- compiler-generated constant pool!
     \\library ieee;
     \\use ieee.std_logic_1164.all;
@@ -35,7 +35,7 @@ const header =
     \\                case ADDR is
 ;
 
-const footer =
+const footer_cpool =
     \\                when others =>
     \\                        DATA <= (
     \\                            meta => (
@@ -52,6 +52,14 @@ const footer =
     \\        end if;
     \\    end process;
     \\end architecture;
+;
+
+const header_irom =
+    \\
+;
+
+const footer_irom =
+    \\
 ;
 
 pub fn main(init: std.process.Init) !void {
@@ -90,7 +98,6 @@ pub fn main(init: std.process.Init) !void {
     }
 
     var file = try std.Io.Dir.cwd().createFile(io, "cpool.vhd", .{});
-    defer file.close(io);
 
     var buffer: [1024]u8 = undefined;
     var writer = file.writerStreaming(io, &buffer);
@@ -98,10 +105,11 @@ pub fn main(init: std.process.Init) !void {
 
     try writer.flush();
 
-    try write.print("{s}\n", .{header});
+    try write.print("{s}\n", .{header_cpool});
     try writer.flush();
 
     // Construct the constant pool
+
     for (vm.constant_pool, 0..) |cpool_entry, i| {
         if (cpool_entry.shape.len > MAX_HW_DIM) {
             std.debug.print("Tensor on HW can only have at most 4 dimensions :(\n", .{});
@@ -164,6 +172,23 @@ pub fn main(init: std.process.Init) !void {
         try writer.flush();
     }
 
-    try write.print("{s}\n", .{footer});
+    // Write the instructions into an IROM file
+
+    try write.print("{s}\n", .{footer_cpool});
+    try writer.flush();
+
+    file.close(io);
+
+    file = try std.Io.Dir.cwd().createFile(io, "irom.vhd", .{});
+    defer file.close(io);
+
+    writer = file.writerStreaming(io, &buffer);
+    write = &writer.interface;
+
+    try writer.flush();
+
+    try write.print("{s}\n", .{header_irom});
+    try writer.flush();
+    try write.print("{s}\n", .{footer_irom});
     try writer.flush();
 }
