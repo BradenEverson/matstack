@@ -10,9 +10,9 @@ entity STACK is
         RST   : in  std_logic;
 
         -- 00: NOP
-		  -- 01: PUSH
-		  -- 10: POP
-		  -- 11: PEEK
+        -- 01: PUSH
+        -- 10: POP
+        -- 11: PEEK
         OP    : in  std_logic_vector(1 downto 0);
         PUSH  : in  tensor_t;
         POP   : out tensor_t;
