@@ -111,14 +111,14 @@ pub const VirtualMachine = struct {
         vm.pc += 1;
 
         switch (cmd) {
-            .load_const => {
+            .LOAD_CONST => {
                 const cpool_idx = @as(usize, extra);
                 const res = try vm.constant_pool[cpool_idx].clone(alloc);
 
                 try vm.stack.push(res);
             },
 
-            .matmul => {
+            .MATMUL => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -128,7 +128,7 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .add => {
+            .ADD => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -138,12 +138,12 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .inc => {
+            .INC => {
                 var val = try vm.stack.peek();
                 val.incInPlace();
             },
 
-            .sub => {
+            .SUB => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -153,7 +153,7 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .div => {
+            .DIV => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -163,7 +163,7 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .mul => {
+            .MUL => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -173,7 +173,7 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .pow => {
+            .POW => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
                 var lhs = try vm.stack.pop();
@@ -183,7 +183,7 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .sum => {
+            .SUM => {
                 var on = try vm.stack.pop();
                 defer on.deinit(alloc);
 
@@ -191,28 +191,28 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .relu => {
+            .RELU => {
                 var res = try vm.stack.pop();
                 res.inPlaceRelu();
 
                 try vm.stack.push(res);
             },
 
-            .transpose => {
+            .TRANSPOSE => {
                 var res = try vm.stack.pop();
                 try res.transposeMatInPlace();
 
                 try vm.stack.push(res);
             },
 
-            .zeros_like => {
+            .ZEROS_LIKE => {
                 var res = try vm.stack.pop();
                 defer res.deinit(alloc);
 
                 try vm.stack.push(try res.zerosLike(alloc));
             },
 
-            .load_i => {
+            .LOAD_I => {
                 var res = try vm.stack.pop();
                 defer res.deinit(alloc);
 
@@ -221,26 +221,26 @@ pub const VirtualMachine = struct {
                 vm.scratch_area[idx] = try res.clone(alloc);
             },
 
-            .clone_i => {
+            .CLONE_I => {
                 const res = try vm.stack.peek();
                 const idx = @as(usize, extra);
 
                 vm.scratch_area[idx] = try res.clone(alloc);
             },
 
-            .store_i => {
+            .STORE_I => {
                 const idx = @as(usize, extra);
                 const res = try vm.scratch_area[idx].clone(alloc);
 
                 try vm.stack.push(res);
             },
 
-            .branch_always => {
+            .BRANCH_ALWAYS => {
                 const offset: i8 = @bitCast(extra);
                 vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
             },
 
-            .branch_eq => {
+            .BRANCH_EQ => {
                 var cmp = try vm.stack.pop();
                 defer cmp.deinit(alloc);
 
@@ -250,7 +250,7 @@ pub const VirtualMachine = struct {
                 }
             },
 
-            .branch_ne => {
+            .BRANCH_NE => {
                 var cmp = try vm.stack.pop();
                 defer cmp.deinit(alloc);
 
@@ -260,7 +260,7 @@ pub const VirtualMachine = struct {
                 }
             },
 
-            .debug_print => {
+            .DEBUG_PRINT => {
                 const top = try vm.stack.peek();
                 std.debug.print("{any}\n", .{top});
             },
@@ -285,9 +285,9 @@ test "simple matmul" {
 
     const constant_pool = &[_]Tensor{ A, B };
     const instructions = &[_]Instruction{
-        .{ .cmd = .load_const, .extra = 0 }, // LOAD A
-        .{ .cmd = .load_const, .extra = 1 }, // LOAD B
-        .{ .cmd = .matmul }, // MATMUL
+        .{ .cmd = .LOAD_CONST, .extra = 0 }, // LOAD A
+        .{ .cmd = .LOAD_CONST, .extra = 1 }, // LOAD B
+        .{ .cmd = .MATMUL }, // MATMUL
     };
 
     var vm: VirtualMachine = .{
@@ -335,9 +335,9 @@ test "parse an entire VM then execute" {
         0x00, 0x00, 0x00, 0x41, // 8
 
         // Instructions
-        @intFromEnum(Command.load_const), 0x00, // LOAD A
-        @intFromEnum(Command.load_const), 0x01, // LOAD B
-        @intFromEnum(Command.matmul), 0x00, // MATMUL
+        @intFromEnum(Command.LOAD_CONST), 0x00, // LOAD A
+        @intFromEnum(Command.LOAD_CONST), 0x01, // LOAD B
+        @intFromEnum(Command.MATMUL), 0x00, // MATMUL
     };
 
     var vm = try VirtualMachine.tryParse(arena.allocator(), bytes);

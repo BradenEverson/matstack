@@ -116,7 +116,7 @@ pub const VmIR = struct {
                 try self.tensors.append(alloc, tensor);
 
                 try self.instructions.append(alloc, .{
-                    .cmd = .load_const,
+                    .cmd = .LOAD_CONST,
                     .extra = @truncate(self.tensors.items.len - 1),
                 });
             },
@@ -132,7 +132,7 @@ pub const VmIR = struct {
                 try self.variable_allocations.put(alloc, a.name, slot);
                 try self.instructions.append(
                     alloc,
-                    .{ .cmd = .load_i, .extra = slot },
+                    .{ .cmd = .LOAD_I, .extra = slot },
                 );
             },
 
@@ -150,12 +150,12 @@ pub const VmIR = struct {
                 try self.variable_allocations.put(alloc, l.counter, slot);
 
                 try self.instructions.append(alloc, .{
-                    .cmd = .load_const,
+                    .cmd = .LOAD_CONST,
                     .extra = @truncate(start_idx),
                 });
 
                 try self.instructions.append(alloc, .{
-                    .cmd = .load_i,
+                    .cmd = .LOAD_I,
                     .extra = @truncate(slot),
                 });
 
@@ -169,14 +169,14 @@ pub const VmIR = struct {
                 // Do a comparison on loop variable and end point
                 // branch back to start of eval if not equal
                 try self.instructions.append(alloc, .{
-                    .cmd = .load_const,
+                    .cmd = .LOAD_CONST,
                     .extra = @truncate(end_idx),
                 });
-                try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
-                try self.instructions.append(alloc, .{ .cmd = .inc });
-                try self.instructions.append(alloc, .{ .cmd = .load_i, .extra = slot });
-                try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
-                try self.instructions.append(alloc, .{ .cmd = .sub });
+                try self.instructions.append(alloc, .{ .cmd = .STORE_I, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .INC });
+                try self.instructions.append(alloc, .{ .cmd = .LOAD_I, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .STORE_I, .extra = slot });
+                try self.instructions.append(alloc, .{ .cmd = .SUB });
 
                 const len_instr = self.instructions.items.len - s;
 
@@ -185,7 +185,7 @@ pub const VmIR = struct {
                 const jump: isize = 0 - len_i;
                 const jump_i8: i8 = @truncate(jump);
                 const jump_u8: u8 = @bitCast(jump_i8);
-                try self.instructions.append(alloc, .{ .cmd = .branch_ne, .extra = jump_u8 });
+                try self.instructions.append(alloc, .{ .cmd = .BRANCH_NE, .extra = jump_u8 });
 
                 // when we're done, counter variable is out of scope!
                 try self.slotstack.reused.append(alloc, slot);
@@ -194,7 +194,7 @@ pub const VmIR = struct {
 
             .variable => |v| {
                 if (self.variable_allocations.get(v)) |slot| {
-                    try self.instructions.append(alloc, .{ .cmd = .store_i, .extra = slot });
+                    try self.instructions.append(alloc, .{ .cmd = .STORE_I, .extra = slot });
                 } else {
                     return error.UsedBeforeDefine;
                 }
@@ -206,7 +206,7 @@ pub const VmIR = struct {
                 const cpool_idx = try self.registerTensor(alloc, tensor);
 
                 try self.instructions.append(alloc, .{
-                    .cmd = .load_const,
+                    .cmd = .LOAD_CONST,
                     .extra = @truncate(cpool_idx),
                 });
             },
@@ -366,14 +366,14 @@ fn literalToTensor(
 
 fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
     return switch (op) {
-        .zeros_like => .zeros_like,
-        .debug => .debug_print,
-        .softmax => .softmax,
-        .relu => .relu,
-        .cross_entropy => .cross_entropy,
-        .ln => .log,
-        .exp => .exp,
-        .sum => .sum,
+        .zeros_like => .ZEROS_LIKE,
+        .debug => .DEBUG_PRINT,
+        .softmax => .SOFTMAX,
+        .relu => .RELU,
+        .cross_entropy => .CROSS_ENTROPY,
+        .ln => .LOG,
+        .exp => .EXP,
+        .sum => .SUM,
         .rand => unreachable, // Handled at compile time
         .for_kw => unreachable, // not applicable
         .in => unreachable, // not applicable
@@ -382,11 +382,11 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
 
 fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
     return switch (op) {
-        .add => .add,
-        .div => .div,
-        .matmul => .matmul,
-        .mul => .mul,
-        .sub => .sub,
-        .pow => .pow,
+        .add => .ADD,
+        .div => .DIV,
+        .matmul => .MATMUL,
+        .mul => .MUL,
+        .sub => .SUB,
+        .pow => .POW,
     };
 }

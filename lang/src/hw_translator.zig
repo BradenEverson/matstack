@@ -8,6 +8,18 @@ const MAX_HW_DIM: usize = 4;
 const MAX_HW_ELEMS: usize = 256;
 const MAX_CPOOL: usize = 64;
 
+const header_consts =
+    \\-- compiler generated instruction constants. The opcode enum changes a lot so this is better than hardcoding :)
+    \\library ieee;
+    \\use ieee.std_logic_1164.all;
+    \\package INSTRUCTIONS is
+    \\
+;
+
+const footer_consts =
+    \\end package INSTRUCTIONS;
+;
+
 const header_cpool =
     \\-- compiler-generated constant pool!
     \\library ieee;
@@ -196,7 +208,6 @@ pub fn main(init: std.process.Init) !void {
     file.close(io);
 
     file = try std.Io.Dir.cwd().createFile(io, "irom.vhd", .{});
-    defer file.close(io);
 
     writer = file.writerStreaming(io, &buffer);
     write = &writer.interface;
@@ -218,5 +229,27 @@ pub fn main(init: std.process.Init) !void {
     }
 
     try write.print("{s}\n", .{footer_irom});
+    try writer.flush();
+
+    file.close(io);
+
+    // Write the instructions as VHDL constants
+
+    file = try std.Io.Dir.cwd().createFile(io, "instructions.vhd", .{});
+    defer file.close(io);
+
+    writer = file.writerStreaming(io, &buffer);
+    write = &writer.interface;
+
+    try writer.flush();
+
+    try write.print("{s}\n", .{header_consts});
+    try writer.flush();
+
+    inline for (@typeInfo(matstack.Instruction.Command).@"enum".fields) |instr| {
+        try write.print("\tconstant INSTR_{s}: std_logic_vector(3 downto 0) := x\"{X:0>2}\";\n", .{ instr.name, instr.value });
+    }
+
+    try write.print("\n{s}\n", .{footer_consts});
     try writer.flush();
 }

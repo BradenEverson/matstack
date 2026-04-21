@@ -2,53 +2,53 @@
 
 pub const Command = enum(u8) {
     // Data processing
-    nop,
-    add,
-    inc,
-    sub,
+    NOP,
+    ADD,
+    INC,
+    SUB,
     /// element-wise multiplication
     /// broadcasts to enable scalar mul
     /// and vector-matrix element-wise mul
-    mul,
-    div,
+    MUL,
+    DIV,
     /// matrix multiplication
-    matmul,
-    transpose,
-    relu,
-    softmax,
-    cross_entropy,
-    dup,
-    swap,
-    exp,
-    pow,
-    log,
-    zeros_like,
+    MATMUL,
+    TRANSPOSE,
+    RELU,
+    SOFTMAX,
+    CROSS_ENTROPY,
+    DUP,
+    SWAP,
+    EXP,
+    POW,
+    LOG,
+    ZEROS_LIKE,
     /// Sums along an axis provided in `extra`
-    sum_reduce,
+    SUM_REDUCE,
     /// just does a plain ol' sum
-    sum,
+    SUM,
 
     // Memory
-    load_const,
+    LOAD_CONST,
     /// Pops and loads the top tensor to
     /// a provided index into the scratch
     /// area
-    load_i,
+    LOAD_I,
     /// Like load, but doesn't pop the tensor off
-    clone_i,
+    CLONE_I,
     /// Grabs and pushes the tensor at a provided
     /// index in the scratch area onto the stack
-    store_i,
-    drop,
+    STORE_I,
+    DROP,
 
     // Branching
-    branch_always,
-    branch_eq,
-    branch_ne,
+    BRANCH_ALWAYS,
+    BRANCH_EQ,
+    BRANCH_NE,
 
     // Debug
-    debug_print,
+    DEBUG_PRINT,
 };
 
-cmd: Command = .nop,
+cmd: Command = .NOP,
 extra: u8 = 0,
