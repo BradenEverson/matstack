@@ -9,7 +9,8 @@ package TENSOR is
     constant MAX_DIMS     : integer := 4;
     constant MAX_ELEMENTS : integer := 256;
     constant STACK_SIZE   : integer := 16;
-    constant SCRATCH_AREA : integer := 256;
+    constant SCRATCH_AREA : integer := 128;
+	constant CPOOL_SIZE   : integer := 64;
 
     type shape_t   is array(0 to MAX_DIMS - 1)     of integer range 0 to 255;
     type strides_t is array(0 to MAX_DIMS - 1)     of integer range 0 to 255;
