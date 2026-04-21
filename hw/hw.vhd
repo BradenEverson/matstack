@@ -4,6 +4,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.tensor.all;
+use work.instructions.all;
 
 entity HW is
     port (
@@ -14,19 +15,6 @@ entity HW is
 end entity;
 
 architecture PIPELINE of HW is
-    constant OP_ADD        : std_logic_vector(7 downto 0) := x"01";
-    constant OP_MUL        : std_logic_vector(7 downto 0) := x"03";
-    constant OP_MATMUL     : std_logic_vector(7 downto 0) := x"04";
-    constant OP_DOT        : std_logic_vector(7 downto 0) := x"05";
-    constant OP_GEMM       : std_logic_vector(7 downto 0) := x"06";
-    constant OP_SCALE      : std_logic_vector(7 downto 0) := x"08";
-    constant OP_RELU       : std_logic_vector(7 downto 0) := x"0E";
-    constant OP_REDUCE_SUM : std_logic_vector(7 downto 0) := x"12";
-    constant OP_LOAD_CONST : std_logic_vector(7 downto 0) := x"13";
-    constant OP_STORE_REG  : std_logic_vector(7 downto 0) := x"14";
-    constant OP_LOAD_REG   : std_logic_vector(7 downto 0) := x"16";
-    constant OP_HALT       : std_logic_vector(7 downto 0) := x"1B";
-
     type state_t is (
         S_FETCH,
         S_DECODE,
@@ -146,21 +134,19 @@ begin
 
                     case irom_q(15 downto 8) is
 
-                        when OP_LOAD_CONST =>
+                        when INSTR_LOAD_CONST =>
                             state <= S_CPOOL_REQ;
 
-                        when OP_STORE_REG =>
+                        when INSTR_LOAD_I =>
                             state <= S_STORE_REG;
 
-                        when OP_LOAD_REG =>
+                        when INSTR_STORE_I =>
                             state <= S_LOAD_REG;
 
-                        when OP_ADD | OP_MUL | OP_MATMUL |
-                             OP_DOT | OP_GEMM | OP_SCALE |
-                             OP_RELU | OP_REDUCE_SUM =>
+                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL	=>
                             state <= S_STACK_POP_A;
 
-                        when OP_HALT =>
+                        when INSTR_DEBUG_PRINT => -- use as a halt for now
                             state <= S_HALT;
 
                         when others =>
@@ -211,7 +197,7 @@ begin
                     stack_op <= "00";
                     if stack_valid = '1' then
                         operand_a <= stack_pop;
-                        if opcode = OP_RELU or opcode = OP_REDUCE_SUM then
+                        if opcode = INSTR_RELU then -- TODO include all unary ops here
                             state <= S_EXECUTE;
                         else
                             state <= S_STACK_POP_B;
