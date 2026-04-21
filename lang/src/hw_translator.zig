@@ -55,11 +55,27 @@ const footer_cpool =
 ;
 
 const header_irom =
+    \\-- compiler generated IROM :D
     \\
+    \\library ieee;
+    \\use ieee.std_logic_1164.all;
+    \\use work.tensor.all;
+    \\
+    \\entity IROM is
+    \\    port (
+    \\        ADDR    : in std_logic_vector(31 downto 0);
+    \\        Q       : out std_logic_vector(15 downto 0)
+    \\    );
+    \\end entity;
+    \\
+    \\architecture MULTIPLEXER of IROM is
+    \\begin
+    \\  with ADDR select
+    \\      Q <=
 ;
 
 const footer_irom =
-    \\
+    \\end architecture;
 ;
 
 pub fn main(init: std.process.Init) !void {
@@ -187,8 +203,20 @@ pub fn main(init: std.process.Init) !void {
 
     try writer.flush();
 
-    try write.print("{s}\n", .{header_irom});
+    try write.print("{s}", .{header_irom});
     try writer.flush();
+
+    for (vm.instructions, 0..) |instr, i| {
+        if (i > 0)
+            try write.print("\t    ", .{});
+        try write.print(" x\"{X:0>2}{X:0>2}\"", .{ @intFromEnum(instr.cmd), instr.extra });
+        if (i >= vm.instructions.len - 1) {
+            try write.print(" when others;\n", .{});
+        } else {
+            try write.print(" when x\"{X:0>8}\",\n", .{i});
+        }
+    }
+
     try write.print("{s}\n", .{footer_irom});
     try writer.flush();
 }
