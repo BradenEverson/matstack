@@ -6,6 +6,9 @@ use ieee.numeric_std.all;
 use work.tensor.all;
 use work.instructions.all;
 
+library ieee_proposed;
+use ieee_proposed.float_pkg.all;
+
 entity TENSOR_ALU is
     port (
         CLK    : in  std_logic;
@@ -20,26 +23,22 @@ entity TENSOR_ALU is
 end entity;
 
 architecture STRUCTURAL of TENSOR_ALU is
-
     type alu_state_t is (S_IDLE, S_ADD, S_DONE);
-    signal state   : alu_state_t := S_IDLE;
-    signal counter : integer range 0 to MAX_ELEMENTS - 1 := 0;
+    signal state      : alu_state_t := S_IDLE;
+    signal counter    : integer range 0 to MAX_ELEMENTS - 1 := 0;
     signal result_reg : tensor_t;
-
 begin
-    DONE   <= '1' when state = S_DONE else '0';
+    DONE <= '1' when state = S_DONE else '0';
     RESULT <= result_reg;
 
     process(CLK, RST)
-        variable sum : unsigned(31 downto 0);
+        variable f_a, f_b, f_sum : float32; 
     begin
         if RST = '0' then
-            state   <= S_IDLE;
+            state <= S_IDLE;
             counter <= 0;
-
         elsif rising_edge(CLK) then
             case state is
-
                 when S_IDLE =>
                     if START = '1' then
                         result_reg.meta <= A.meta;
@@ -51,11 +50,15 @@ begin
                     end if;
 
                 when S_ADD =>
-                    sum := unsigned(A.data(counter)) + unsigned(B.data(counter));
-                    result_reg.data(counter) <= std_logic_vector(sum);
+                    f_a := to_float(A.data(counter)); 
+                    f_b := to_float(B.data(counter));
+                    
+                    f_sum := f_a + f_b;
+                    
+                    result_reg.data(counter) <= to_slv(f_sum);
 
                     if counter = A.meta.n_elems - 1 then
-                        state   <= S_DONE;
+                        state <= S_DONE;
                         counter <= 0;
                     else
                         counter <= counter + 1;
@@ -63,9 +66,8 @@ begin
 
                 when S_DONE =>
                     state <= S_IDLE;
-
             end case;
         end if;
     end process;
-
 end architecture STRUCTURAL;
+

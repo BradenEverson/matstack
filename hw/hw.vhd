@@ -11,6 +11,8 @@ entity HW is
         CLK : in  std_logic;
         RST : in  std_logic;
         HALT : out std_logic;
+		  curr_pc: out std_logic_vector(31 downto 0);
+		  instr: out std_logic_vector(15 downto 0);
 		  TENSOR_OUT: out std_logic_vector(31 downto 0)
     );
 end entity;
@@ -70,8 +72,6 @@ architecture PIPELINE of HW is
 begin
 
     irom_addr <= std_logic_vector(pc);
-	 
-	 TENSOR_OUT <= scratch_area(0).data(0);
 
     U_IROM : entity work.IROM
         port map (ADDR => irom_addr, Q => irom_q);
@@ -246,5 +246,11 @@ begin
     end process;
 
     HALT <= '1' when state = S_HALT else '0';
+	 
+	 
+	 curr_pc <= std_logic_vector(pc);
+	 instr <= irom_q;
+	 
+	 TENSOR_OUT <= scratch_area(0).data(0);
 
 end architecture PIPELINE;
