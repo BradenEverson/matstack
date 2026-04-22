@@ -16,7 +16,7 @@ begin
   with ADDR select
       Q <= x"1300" when x"00000000",
              x"1301" when x"00000001",
-             x"0100" when x"00000002",
+             x"0600" when x"00000002",
              x"1400" when x"00000003",
 				 x"0000" when others;
 end architecture;

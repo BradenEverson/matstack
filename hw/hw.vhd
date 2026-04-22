@@ -8,12 +8,16 @@ use work.instructions.all;
 
 entity HW is
     port (
-        CLK : in  std_logic;
-        RST : in  std_logic;
-        HALT : out std_logic;
-		  curr_pc: out std_logic_vector(31 downto 0);
-		  instr: out std_logic_vector(15 downto 0);
-		  TENSOR_OUT: out std_logic_vector(31 downto 0)
+        CLK              : in  std_logic;
+        RST              : in  std_logic;
+        HALT             : out std_logic;
+        curr_pc          : out std_logic_vector(31 downto 0);
+        instr            : out std_logic_vector(15 downto 0);
+        TENSOR_OUT       : out std_logic_vector(31 downto 0);
+        ERR              : out std_logic;
+        OP               : out std_logic_vector(1 downto 0);
+        CONST_DATA       : out std_logic_vector(31 downto 0);
+        STACK_READY_STATE: out std_logic
     );
 end entity;
 
@@ -24,6 +28,7 @@ architecture PIPELINE of HW is
         S_CPOOL_REQ,
         S_CPOOL_WAIT,
         S_STACK_PUSH,
+        S_STACK_PUSH_WAIT,
         S_STACK_POP_A,
         S_STACK_POP_B,
         S_WAIT_POP_A,
@@ -32,6 +37,7 @@ architecture PIPELINE of HW is
         S_WAIT_EXEC,
         S_WRITEBACK,
         S_WAIT_WB,
+        S_WAIT_WB_HOLD,
         S_LOAD_REG,
         S_STORE_REG,
         S_WAIT_STORE,
@@ -102,8 +108,8 @@ begin
             CLK     => CLK,
             RST     => RST,
             OP      => opcode,
-            A       => operand_a,
-            B       => operand_b,
+            A       => operand_b,
+            B       => operand_a,
             START   => alu_start,
             RESULT  => alu_result,
             DONE    => alu_done
@@ -112,10 +118,10 @@ begin
     process(CLK, RST)
     begin
         if RST = '0' then
-            state    <= S_FETCH;
-            pc       <= (others => '0');
-            stack_op <= "00";
-            cpool_en <= '0';
+            state     <= S_FETCH;
+            pc        <= (others => '0');
+            stack_op  <= "00";
+            cpool_en  <= '0';
             alu_start <= '0';
 
         elsif rising_edge(CLK) then
@@ -146,10 +152,10 @@ begin
                         when INSTR_STORE_I =>
                             state <= S_LOAD_REG;
 
-                        when INSTR_ADD	=> -- TODO: all the ALU ops here
+                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL =>
                             state <= S_STACK_POP_A;
 
-                        when INSTR_DEBUG_PRINT => -- use as a halt for now
+                        when INSTR_DEBUG_PRINT =>
                             state <= S_HALT;
 
                         when others =>
@@ -171,6 +177,10 @@ begin
                     end if;
 
                 when S_STACK_PUSH =>
+                    stack_op <= "01";
+                    state    <= S_STACK_PUSH_WAIT;
+
+                when S_STACK_PUSH_WAIT =>
                     if stack_ready = '1' then
                         stack_op <= "00";
                         state    <= S_FETCH;
@@ -200,7 +210,7 @@ begin
                     stack_op <= "00";
                     if stack_valid = '1' then
                         operand_a <= stack_pop;
-                        if opcode = INSTR_RELU then -- TODO include all unary ops here
+                        if opcode = INSTR_RELU then
                             state <= S_EXECUTE;
                         else
                             state <= S_STACK_POP_B;
@@ -233,6 +243,10 @@ begin
                     state      <= S_WAIT_WB;
 
                 when S_WAIT_WB =>
+                    stack_op <= "01";
+                    state    <= S_WAIT_WB_HOLD;
+
+                when S_WAIT_WB_HOLD =>
                     if stack_ready = '1' then
                         stack_op <= "00";
                         state    <= S_FETCH;
@@ -245,12 +259,13 @@ begin
         end if;
     end process;
 
-    HALT <= '1' when state = S_HALT else '0';
-	 
-	 
-	 curr_pc <= std_logic_vector(pc);
-	 instr <= irom_q;
-	 
-	 TENSOR_OUT <= scratch_area(0).data(0);
+    HALT              <= '1' when state = S_HALT else '0';
+    curr_pc           <= std_logic_vector(pc);
+    instr             <= irom_q;
+    OP                <= stack_op;
+    ERR               <= stack_err;
+    CONST_DATA        <= stack_push.data(0);
+    STACK_READY_STATE <= stack_ready;
+    TENSOR_OUT        <= scratch_area(0).data(0);
 
 end architecture PIPELINE;

@@ -22,25 +22,35 @@ begin
             if EN = '1' then
                 VALID <= '1';
                 case ADDR is
-                --ConstantPool[0]: shape={ 1 } data={ 1 }
+                --ConstantPool[0]: shape={ 2, 3 } data={ 1, 2, 1, 0, 1, 0 }
                 when 0 =>
-                        DATA.meta.n_dims <= 1;
-                        DATA.meta.n_elems <= 1;
+                        DATA.meta.n_dims <= 2;
+                        DATA.meta.n_elems <= 6;
                         DATA.meta.offset <= 0;
-                        DATA.meta.shape <= (1,0,0,0);
-                        DATA.meta.strides <= (1,0,0,0);
+                        DATA.meta.shape <= (2,3,0,0);
+                        DATA.meta.strides <= (3,1,0,0);
                         DATA.data(0) <= x"3F800000"; -- 1.00
-                        DATA.data(1 to MAX_ELEMENTS - 1) <= (others => x"00000000");
+                        DATA.data(1) <= x"40000000"; -- 2.00
+                        DATA.data(2) <= x"3F800000"; -- 1.00
+                        DATA.data(3) <= x"00000000"; -- 0.00
+                        DATA.data(4) <= x"3F800000"; -- 1.00
+                        DATA.data(5) <= x"00000000"; -- 0.00
+                        DATA.data(6 to MAX_ELEMENTS - 1) <= (others => x"00000000");
 
-                --ConstantPool[1]: shape={ 1 } data={ 2 }
+                --ConstantPool[1]: shape={ 3, 2 } data={ 2, 5, 6, 7, 1, 8 }
                 when 1 =>
-                        DATA.meta.n_dims <= 1;
-                        DATA.meta.n_elems <= 1;
+                        DATA.meta.n_dims <= 2;
+                        DATA.meta.n_elems <= 6;
                         DATA.meta.offset <= 0;
-                        DATA.meta.shape <= (1,0,0,0);
-                        DATA.meta.strides <= (1,0,0,0);
+                        DATA.meta.shape <= (3,2,0,0);
+                        DATA.meta.strides <= (2,1,0,0);
                         DATA.data(0) <= x"40000000"; -- 2.00
-                        DATA.data(1 to MAX_ELEMENTS - 1) <= (others => x"00000000");
+                        DATA.data(1) <= x"40A00000"; -- 5.00
+                        DATA.data(2) <= x"40C00000"; -- 6.00
+                        DATA.data(3) <= x"40E00000"; -- 7.00
+                        DATA.data(4) <= x"3F800000"; -- 1.00
+                        DATA.data(5) <= x"41000000"; -- 8.00
+                        DATA.data(6 to MAX_ELEMENTS - 1) <= (others => x"00000000");
 
                 when others =>
                         DATA <= (
