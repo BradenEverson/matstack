@@ -28,6 +28,8 @@ architecture STRUCTURAL of TENSOR_ALU is
         S_ADD,
         S_MUL,
         S_MATMUL,
+		  S_RELU,
+		  S_SUM,
         S_DONE
     );
 
@@ -74,6 +76,18 @@ begin
                             when INSTR_MUL =>
                                 result_reg.meta <= A.meta;
                                 state <= S_MUL;
+										  
+									 when INSTR_RELU =>
+										  result_reg.meta <= B.meta;
+										  state <= S_RELU;
+										  
+									 when INSTR_SUM => 
+										  result_reg.meta.shape <= (1,0,0,0);
+										  result_reg.meta.strides <= (1,0,0,0);
+										  result_reg.meta.n_dims <= 1;
+										  result_reg.meta.n_elems <= 1;
+										  result_reg.meta.offset <= 0;
+										  state <= S_SUM;
 
                             when INSTR_MATMUL =>
                                 mm_M <= A.meta.shape(0);
@@ -106,6 +120,24 @@ begin
                                 state <= S_IDLE;
                         end case;
                     end if;
+						  
+					 when S_RELU => 
+						 f_b := to_float(B.data(counter));
+						 
+						 if f_b < to_float(0) then
+						     f_res := to_float(0);
+						 else
+						     f_res := f_b;
+						 end if;
+						 
+						 result_reg.data(counter) <= to_slv(f_res);
+
+						 if counter = B.meta.n_elems - 1 then
+							  state   <= S_DONE;
+							  counter <= 0;
+						 else
+							  counter <= counter + 1;
+						 end if;
 
                 when S_MATMUL =>
 						 f_a    := to_float(A.data(a_ptr));
@@ -144,6 +176,25 @@ begin
 							  a_ptr  <= a_ptr + A.meta.strides(1);
 							  b_ptr  <= b_ptr + B.meta.strides(0);
 						 end if;
+						 
+					 when S_SUM =>
+                    f_b := to_float(B.data(counter));
+						  
+						  if counter = 0 then
+						     f_res := f_b;
+						  else
+							  f_a   := to_float(result_reg.data(0));
+							  f_res := f_a + f_b;
+						  end if;
+						  
+                    result_reg.data(0) <= to_slv(f_res);
+
+                    if counter = 3 then --B.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
 
                 when S_ADD =>
                     f_a := to_float(A.data(counter));

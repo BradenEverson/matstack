@@ -152,7 +152,8 @@ begin
                         when INSTR_STORE_I =>
                             state <= S_LOAD_REG;
 
-                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL =>
+                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL |
+										INSTR_RELU | INSTR_SUM =>
                             state <= S_STACK_POP_A;
 
                         when INSTR_DEBUG_PRINT =>
@@ -210,7 +211,8 @@ begin
                     stack_op <= "00";
                     if stack_valid = '1' then
                         operand_a <= stack_pop;
-                        if opcode = INSTR_RELU then
+                        if opcode = INSTR_SUM then
+									 operand_b <= stack_pop;
                             state <= S_EXECUTE;
                         else
                             state <= S_STACK_POP_B;
