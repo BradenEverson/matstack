@@ -103,6 +103,10 @@ pub const Parser = struct {
 
     pub fn parse(self: *Parser, ast: *std.ArrayList(*const Expr)) AnyParserError!void {
         while (!self.at_end()) {
+            while (self.peek() == .newline) {
+                try self.consume(.newline);
+            }
+
             const expr = try self.statement();
             try ast.append(self.arena.allocator(), expr);
 
