@@ -24,6 +24,10 @@ pub const Command = enum(u8) {
     POW,
     LOG,
     ZEROS_LIKE,
+    // Element wise greater than (1 for true, 0 for false)
+    GT,
+    // Element wise less than (1 for true, 0 for false)
+    LT,
     /// Sums along an axis provided in `extra`
     SUM_REDUCE,
     /// just does a plain ol' sum

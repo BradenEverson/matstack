@@ -41,7 +41,7 @@ for (e in 0->500) {
     c_grad = sum_cols(dv)
     M_grad = dv @ transpose(h) + 2 * epsilon * M
     dh = transpose(M) @ dv
-    du = dh * relu_der(u)
+    du = dh * (u > 0)
     b_grad = sum_cols(du)
     W_grad = du @ transpose(x) + 2 * epsilon * W
 

@@ -27,6 +27,8 @@ pub const Literal = union(enum) {
 };
 
 pub const BinaryOp = enum {
+    gt,
+    lt,
     add,
     sub,
     mul,
@@ -203,16 +205,44 @@ pub const Parser = struct {
     }
 
     fn term(self: *Parser) !*const Expr {
-        var left = try self.factor();
+        var left = try self.comparison();
 
         while (self.peek() == .plus or self.peek() == .minus) {
+            const op_token = self.tokens[self.cursor];
+            self.advance();
+            const right = try self.comparison();
+
+            const op = switch (op_token.tag) {
+                .plus => BinaryOp.add,
+                .minus => BinaryOp.sub,
+                else => unreachable,
+            };
+
+            const binary_op_expr = try self.arena.allocator().create(Expr);
+            binary_op_expr.* = .{
+                .binary_op = .{
+                    .left = left,
+                    .op = op,
+                    .right = right,
+                },
+            };
+            left = binary_op_expr;
+        }
+
+        return left;
+    }
+
+    fn comparison(self: *Parser) AnyParserError!*const Expr {
+        var left = try self.factor();
+
+        while (self.peek() == .gt or self.peek() == .lt) {
             const op_token = self.tokens[self.cursor];
             self.advance();
             const right = try self.factor();
 
             const op = switch (op_token.tag) {
-                .plus => BinaryOp.add,
-                .minus => BinaryOp.sub,
+                .gt => BinaryOp.gt,
+                .lt => BinaryOp.lt,
                 else => unreachable,
             };
 

@@ -127,8 +127,23 @@ fn f32Pow(a: f32, b: f32) f32 {
     return std.math.pow(f32, a, b);
 }
 
+fn f32Gt(a: f32, b: f32) f32 {
+    return if (a > b) 1 else 0;
+}
+
+fn f32Lt(a: f32, b: f32) f32 {
+    return if (a < b) 1 else 0;
+}
+
 pub fn incInPlace(a: *Tensor) void {
     for (a.data) |*val| val.* += 1.0;
+}
+
+pub fn gt(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Gt);
+}
+pub fn lt(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Lt);
 }
 
 pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {

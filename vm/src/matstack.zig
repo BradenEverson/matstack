@@ -128,6 +128,26 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .LT => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.lt(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .GT => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.gt(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
             .ADD => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);

@@ -375,7 +375,6 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .ln => .{ .cmd = .LOG },
         .exp => .{ .cmd = .EXP },
         .sum => .{ .cmd = .SUM },
-        .relu_der => .{ .cmd = .RELU_DER },
         .transpose => .{ .cmd = .TRANSPOSE },
         .sum_cols => .{ .cmd = .SUM_REDUCE, .extra = 1 },
         .rand => unreachable, // Handled at compile time
@@ -386,6 +385,8 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
 
 fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
     return switch (op) {
+        .gt => .GT,
+        .lt => .LT,
         .add => .ADD,
         .div => .DIV,
         .matmul => .MATMUL,
