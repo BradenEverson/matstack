@@ -152,7 +152,8 @@ begin
                         when INSTR_STORE_I =>
                             state <= S_LOAD_REG;
 
-                        when INSTR_ADD | INSTR_MUL | INSTR_MATMUL |
+                        when INSTR_ADD | INSTR_MUL | 
+										INSTR_MATMUL | INSTR_POW |
 										INSTR_RELU | INSTR_SUM =>
                             state <= S_STACK_POP_A;
 

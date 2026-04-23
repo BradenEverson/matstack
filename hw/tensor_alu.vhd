@@ -30,6 +30,7 @@ architecture STRUCTURAL of TENSOR_ALU is
         S_MATMUL,
 		  S_RELU,
 		  S_SUM,
+		  S_POW,
         S_DONE
     );
 
@@ -80,6 +81,10 @@ begin
 									 when INSTR_RELU =>
 										  result_reg.meta <= B.meta;
 										  state <= S_RELU;
+										  
+									 when INSTR_POW =>
+										  result_reg.meta <= A.meta;
+										  state <= S_POW;
 										  
 									 when INSTR_SUM => 
 										  result_reg.meta.shape <= (1,0,0,0);
@@ -189,7 +194,7 @@ begin
 						  
                     result_reg.data(0) <= to_slv(f_res);
 
-                    if counter = 3 then --B.meta.n_elems - 1 then
+                    if counter = B.meta.n_elems - 1 then
                         state   <= S_DONE;
                         counter <= 0;
                     else
@@ -212,6 +217,19 @@ begin
                 when S_MUL =>
                     f_a := to_float(A.data(counter));
                     f_b := to_float(B.data(counter));
+                    f_res := f_a * f_b;
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = A.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
+						  
+					 when S_POW => -- This is a huge hack, but right now all we use is squaring, so that's all I'm gonna do for now
+                    f_a := to_float(A.data(counter)); 
+                    f_b := to_float(A.data(counter));
                     f_res := f_a * f_b;
                     result_reg.data(counter) <= to_slv(f_res);
 
