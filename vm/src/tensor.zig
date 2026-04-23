@@ -415,6 +415,19 @@ pub fn relu(self: *const Tensor, alloc: Allocator) !Tensor {
     return copy;
 }
 
+pub fn inPlaceReluDerivative(self: *Tensor) void {
+    for (self.data) |*val| {
+        if (val.* < 0) val.* = 0 else val.* = 1;
+    }
+}
+
+pub fn reluDerivative(self: *const Tensor, alloc: Allocator) !Tensor {
+    var copy = try self.clone(alloc);
+    copy.inPlaceReluDerivative();
+
+    return copy;
+}
+
 pub fn subInPlace(self: *Tensor, b: Tensor) !void {
     if (!std.mem.eql(usize, self.shape, b.shape))
         return error.OperandSizesDoNotAgree;

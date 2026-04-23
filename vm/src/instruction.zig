@@ -15,6 +15,7 @@ pub const Command = enum(u8) {
     MATMUL,
     TRANSPOSE,
     RELU,
+    RELU_DER,
     SOFTMAX,
     CROSS_ENTROPY,
     DUP,

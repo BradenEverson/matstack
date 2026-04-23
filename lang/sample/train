@@ -5,38 +5,54 @@
 
 ; regularization constant
 epsilon = 0.01
-
 x = [[-10], [1]]
 y = [[10], [5]]
 
 ; Initialize our learnable parameters
 W = rand(3, 2)
 W_grad = zeros_like(W)
-
 M = rand(2, 3)
 M_grad = zeros_like(M)
-
 b = rand(3, 1)
 b_grad = zeros_like(b)
-
 c = rand(2, 1)
 c_grad = zeros_like(c)
 
+; Learning rate
+lr = 0.01
+
 ; Training loop (10 epochs)
-for (e in 0->10) {
+for (e in 0->500) {
     ; TODO: batching (need slices for that)
+
+    ; Forward
     u = W @ x + b
     h = relu(u)
-
     v = M @ h + c
     L = sum((y - v)^2) / 2
-
     S1 = epsilon * sum(W^2)
     S2 = epsilon * sum(M^2)
-
     S = S1 + S2
     J = L + S
-
     debug(J)
+
+    ; Backward
+    dv = -1 * (y - v)
+    c_grad = sum_cols(dv)
+    M_grad = dv @ transpose(h) + 2 * epsilon * M
+    dh = transpose(M) @ dv
+    du = dh * relu_der(u)
+    b_grad = sum_cols(du)
+    W_grad = du @ transpose(x) + 2 * epsilon * W
+
+    W = W - lr * W_grad
+    M = M - lr * M_grad
+    b = b - lr * b_grad
+    c = c - lr * c_grad
 }
 
+u = W @ x + b
+h = relu(u)
+v = M @ h + c
+
+debug(v)

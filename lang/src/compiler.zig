@@ -97,7 +97,7 @@ pub const VmIR = struct {
                 try self.evalExpr(io, alloc, u.expr);
 
                 const cmd = keywordToCmd(u.op);
-                try self.instructions.append(alloc, .{ .cmd = cmd });
+                try self.instructions.append(alloc, cmd);
             },
 
             .rand_tensor => |shape| {
@@ -196,6 +196,7 @@ pub const VmIR = struct {
                 if (self.variable_allocations.get(v)) |slot| {
                     try self.instructions.append(alloc, .{ .cmd = .STORE_I, .extra = slot });
                 } else {
+                    std.debug.print("{s}\n", .{v});
                     return error.UsedBeforeDefine;
                 }
             },
@@ -364,16 +365,19 @@ fn literalToTensor(
     return tensor;
 }
 
-fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction.Command {
+fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
     return switch (op) {
-        .zeros_like => .ZEROS_LIKE,
-        .debug => .DEBUG_PRINT,
-        .softmax => .SOFTMAX,
-        .relu => .RELU,
-        .cross_entropy => .CROSS_ENTROPY,
-        .ln => .LOG,
-        .exp => .EXP,
-        .sum => .SUM,
+        .zeros_like => .{ .cmd = .ZEROS_LIKE },
+        .debug => .{ .cmd = .DEBUG_PRINT },
+        .softmax => .{ .cmd = .SOFTMAX },
+        .relu => .{ .cmd = .RELU },
+        .cross_entropy => .{ .cmd = .CROSS_ENTROPY },
+        .ln => .{ .cmd = .LOG },
+        .exp => .{ .cmd = .EXP },
+        .sum => .{ .cmd = .SUM },
+        .relu_der => .{ .cmd = .RELU_DER },
+        .transpose => .{ .cmd = .TRANSPOSE },
+        .sum_cols => .{ .cmd = .SUM_REDUCE, .extra = 1 },
         .rand => unreachable, // Handled at compile time
         .for_kw => unreachable, // not applicable
         .in => unreachable, // not applicable
