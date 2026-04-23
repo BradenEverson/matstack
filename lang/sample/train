@@ -1,7 +1,7 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Simple Gradient Descent 
 ;; Problem :D
-;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ; regularization constant
 epsilon = 0.01
@@ -9,11 +9,11 @@ x = [[-10], [1]]
 y = [[10], [5]]
 
 ; Initialize our learnable parameters
-W = rand(3, 2)
+W = rand(8, 2)
 W_grad = zeros_like(W)
-M = rand(2, 3)
+M = rand(2, 8)
 M_grad = zeros_like(M)
-b = rand(3, 1)
+b = rand(8, 1)
 b_grad = zeros_like(b)
 c = rand(2, 1)
 c_grad = zeros_like(c)
@@ -21,7 +21,7 @@ c_grad = zeros_like(c)
 ; Learning rate
 lr = 0.01
 
-; Training loop (10 epochs)
+; Training loop (500 epochs)
 for (e in 0->500) {
     ; TODO: batching (need slices for that)
 

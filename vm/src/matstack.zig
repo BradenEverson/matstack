@@ -281,7 +281,7 @@ pub const VirtualMachine = struct {
             },
 
             .DEBUG_PRINT => {
-                const top = try vm.stack.peek();
+                const top = try vm.stack.pop();
                 std.debug.print("{any}\n", .{top});
             },
 
