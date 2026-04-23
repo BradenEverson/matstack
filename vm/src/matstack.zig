@@ -218,13 +218,6 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .RELU_DER => {
-                var res = try vm.stack.pop();
-                res.inPlaceReluDerivative();
-
-                try vm.stack.push(res);
-            },
-
             .TRANSPOSE => {
                 var res = try vm.stack.pop();
                 try res.transposeMatInPlace();
