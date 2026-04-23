@@ -1,0 +1,42 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Simple Gradient Descent 
+;; Problem :D
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+; regularization constant
+epsilon = 0.01
+
+x = [[-10], [1]]
+y = [[10], [5]]
+
+; Initialize our learnable parameters
+W = rand(3, 2)
+W_grad = zeros_like(W)
+
+M = rand(2, 3)
+M_grad = zeros_like(M)
+
+b = rand(3, 1)
+b_grad = zeros_like(b)
+
+c = rand(2, 1)
+c_grad = zeros_like(c)
+
+; Training loop (10 epochs)
+for (e in 0->10) {
+    ; TODO: batching (need slices for that)
+    u = W @ x + b
+    h = relu(u)
+
+    v = M @ h + c
+    L = sum((y - v)^2) / 2
+
+    S1 = epsilon * sum(W^2)
+    S2 = epsilon * sum(M^2)
+
+    S = S1 + S2
+    J = L + S
+
+    debug(J)
+}
+
