@@ -9,8 +9,8 @@ package TENSOR is
     constant MAX_DIMS     : integer := 4;
     constant MAX_ELEMENTS : integer := 16;
     constant STACK_SIZE   : integer := 16;
-    constant SCRATCH_AREA : integer := 8;
-	 constant CPOOL_SIZE   : integer := 8;
+    constant SCRATCH_AREA : integer := 16;
+    constant CPOOL_SIZE   : integer := 16;
 
     type shape_t   is array(0 to MAX_DIMS - 1)     of integer range 0 to 255;
     type strides_t is array(0 to MAX_DIMS - 1)     of integer range 0 to 255;
@@ -24,7 +24,7 @@ package TENSOR is
     end record;
 
     type tensor_data_t is array(0 to MAX_ELEMENTS - 1)
-        of std_logic_vector(31 downto 0);
+    of std_logic_vector(31 downto 0);
 
     type tensor_t is record
         meta : tensor_meta_t;

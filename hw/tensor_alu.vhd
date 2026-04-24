@@ -11,47 +11,51 @@ use ieee_proposed.float_pkg.all;
 
 entity TENSOR_ALU is
     port (
-        CLK    : in  std_logic;
-        RST    : in  std_logic;
-        OP     : in  std_logic_vector(7 downto 0);
-        A      : in  tensor_t;
-        B      : in  tensor_t;
-        START  : in  std_logic;
-        RESULT : out tensor_t;
-        DONE   : out std_logic
-    );
+             CLK    : in  std_logic;
+             RST    : in  std_logic;
+             OP     : in  std_logic_vector(7 downto 0);
+             A      : in  tensor_t;
+             B      : in  tensor_t;
+             START  : in  std_logic;
+             RESULT : out tensor_t;
+             DONE   : out std_logic
+         );
 end entity;
 
 architecture STRUCTURAL of TENSOR_ALU is
     type alu_state_t is (
-        S_IDLE,
-        S_ADD,
-        S_MUL,
-        S_MATMUL,
-		  S_RELU,
-		  S_SUM,
-		  S_POW,
-        S_DONE
-    );
+    S_IDLE,
+    S_ADD,
+    S_SUB,
+    S_MUL,
+    S_SCALAR_A_MUL,
+    S_SCALAR_B_MUL,
+    S_MATMUL,
+    S_DIV,
+    S_RELU,
+    S_SUM,
+    S_POW,
+    S_DONE
+);
 
-    signal state      : alu_state_t := S_IDLE;
-    signal counter    : integer range 0 to MAX_ELEMENTS - 1 := 0;
-    signal result_reg : tensor_t;
+signal state      : alu_state_t := S_IDLE;
+signal counter    : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal result_reg : tensor_t;
 
-    signal mm_i  : integer range 0 to 15 := 0;
-    signal mm_j  : integer range 0 to 15 := 0;
-    signal mm_ki : integer range 0 to 15 := 0;
-    signal mm_M  : integer range 0 to 15 := 0;
-    signal mm_K  : integer range 0 to 15 := 0;
-    signal mm_N  : integer range 0 to 15 := 0;
+signal mm_i  : integer range 0 to 15 := 0;
+signal mm_j  : integer range 0 to 15 := 0;
+signal mm_ki : integer range 0 to 15 := 0;
+signal mm_M  : integer range 0 to 15 := 0;
+signal mm_K  : integer range 0 to 15 := 0;
+signal mm_N  : integer range 0 to 15 := 0;
 
-    signal a_row_base : integer range 0 to MAX_ELEMENTS - 1 := 0;
-    signal a_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
-    signal b_col_base : integer range 0 to MAX_ELEMENTS - 1 := 0;
-    signal b_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
-    signal c_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal a_row_base : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal a_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal b_col_base : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal b_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
+signal c_ptr      : integer range 0 to MAX_ELEMENTS - 1 := 0;
 
-    signal mm_acc : float32;
+signal mm_acc : float32;
 
 begin
     DONE   <= '1' when state = S_DONE else '0';
@@ -74,25 +78,41 @@ begin
                                 result_reg.meta <= A.meta;
                                 state <= S_ADD;
 
-                            when INSTR_MUL =>
+                            when INSTR_SUB =>
                                 result_reg.meta <= A.meta;
-                                state <= S_MUL;
-										  
-									 when INSTR_RELU =>
-										  result_reg.meta <= B.meta;
-										  state <= S_RELU;
-										  
-									 when INSTR_POW =>
-										  result_reg.meta <= A.meta;
-										  state <= S_POW;
-										  
-									 when INSTR_SUM => 
-										  result_reg.meta.shape <= (1,0,0,0);
-										  result_reg.meta.strides <= (1,0,0,0);
-										  result_reg.meta.n_dims <= 1;
-										  result_reg.meta.n_elems <= 1;
-										  result_reg.meta.offset <= 0;
-										  state <= S_SUM;
+                                state <= S_SUB;
+
+                            when INSTR_MUL =>
+                                if (A.meta.shape = (1,0,0,0)) then
+                                    result_reg.meta <= B.meta;
+                                    state <= S_SCALAR_A_MUL;
+                                elsif (B.meta.shape = (1,0,0,0)) then
+                                    result_reg.meta <= A.meta;
+                                    state <= S_SCALAR_B_MUL;
+                                else
+                                    result_reg.meta <= A.meta;
+                                    state <= S_MUL;
+                                end if;
+
+                            when INSTR_RELU =>
+                                result_reg.meta <= B.meta;
+                                state <= S_RELU;
+
+                            when INSTR_POW =>
+                                result_reg.meta <= A.meta;
+                                state <= S_POW;
+
+                            when INSTR_DIV =>
+                                result_reg.meta <= A.meta;
+                                state <= S_DIV;
+
+                            when INSTR_SUM =>
+                                result_reg.meta.shape <= (1,0,0,0);
+                                result_reg.meta.strides <= (1,0,0,0);
+                                result_reg.meta.n_dims <= 1;
+                                result_reg.meta.n_elems <= 1;
+                                result_reg.meta.offset <= 0;
+                                state <= S_SUM;
 
                             when INSTR_MATMUL =>
                                 mm_M <= A.meta.shape(0);
@@ -104,7 +124,7 @@ begin
                                 result_reg.meta.n_dims   <= 2;
                                 result_reg.meta.n_elems  <= A.meta.shape(0) * B.meta.shape(1);
                                 result_reg.meta.offset   <= 0;
-										  
+
                                 result_reg.meta.strides(0) <= B.meta.shape(1);
                                 result_reg.meta.strides(1) <= 1;
 
@@ -125,73 +145,73 @@ begin
                                 state <= S_IDLE;
                         end case;
                     end if;
-						  
-					 when S_RELU => 
-						 f_b := to_float(B.data(counter));
-						 
-						 if f_b < to_float(0) then
-						     f_res := to_float(0);
-						 else
-						     f_res := f_b;
-						 end if;
-						 
-						 result_reg.data(counter) <= to_slv(f_res);
 
-						 if counter = B.meta.n_elems - 1 then
-							  state   <= S_DONE;
-							  counter <= 0;
-						 else
-							  counter <= counter + 1;
-						 end if;
+                when S_RELU =>
+                    f_b := to_float(B.data(counter));
+
+                    if f_b < to_float(0) then
+                        f_res := to_float(0);
+                    else
+                        f_res := f_b;
+                    end if;
+
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = B.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
 
                 when S_MATMUL =>
-						 f_a    := to_float(A.data(a_ptr));
-						 f_b    := to_float(B.data(b_ptr));
-						 f_prod := f_a * f_b;
+                    f_a    := to_float(A.data(a_ptr));
+                    f_b    := to_float(B.data(b_ptr));
+                    f_prod := f_a * f_b;
 
-						 if mm_ki = A.meta.shape(1) - 1 then
-							  result_reg.data(c_ptr) <= to_slv(mm_acc + f_prod);
-							  c_ptr  <= c_ptr + 1;
-							  mm_acc <= to_float(0);
-							  mm_ki  <= 0;
+                    if mm_ki = A.meta.shape(1) - 1 then
+                        result_reg.data(c_ptr) <= to_slv(mm_acc + f_prod);
+                        c_ptr  <= c_ptr + 1;
+                        mm_acc <= to_float(0);
+                        mm_ki  <= 0;
 
-							  a_ptr <= a_row_base;
+                        a_ptr <= a_row_base;
 
-							  if mm_j = B.meta.shape(1) - 1 then
-									mm_j       <= 0;
-									b_col_base <= B.meta.offset;
-									b_ptr      <= B.meta.offset;
+                        if mm_j = B.meta.shape(1) - 1 then
+                            mm_j       <= 0;
+                            b_col_base <= B.meta.offset;
+                            b_ptr      <= B.meta.offset;
 
-									if mm_i = A.meta.shape(0) - 1 then
-										 state <= S_DONE;
-									else
-										 mm_i       <= mm_i + 1;
-										 a_row_base <= a_row_base + A.meta.strides(0);
-										 a_ptr      <= a_row_base + A.meta.strides(0);
-									end if;
-							  else
-									mm_j       <= mm_j + 1;
-									b_col_base <= b_col_base + B.meta.strides(1);
-									b_ptr      <= b_col_base + B.meta.strides(1);
-							  end if;
+                            if mm_i = A.meta.shape(0) - 1 then
+                                state <= S_DONE;
+                            else
+                                mm_i       <= mm_i + 1;
+                                a_row_base <= a_row_base + A.meta.strides(0);
+                                a_ptr      <= a_row_base + A.meta.strides(0);
+                            end if;
+                        else
+                            mm_j       <= mm_j + 1;
+                            b_col_base <= b_col_base + B.meta.strides(1);
+                            b_ptr      <= b_col_base + B.meta.strides(1);
+                        end if;
 
-						 else
-							  mm_acc <= mm_acc + f_prod;
-							  mm_ki  <= mm_ki + 1;
-							  a_ptr  <= a_ptr + A.meta.strides(1);
-							  b_ptr  <= b_ptr + B.meta.strides(0);
-						 end if;
-						 
-					 when S_SUM =>
+                    else
+                        mm_acc <= mm_acc + f_prod;
+                        mm_ki  <= mm_ki + 1;
+                        a_ptr  <= a_ptr + A.meta.strides(1);
+                        b_ptr  <= b_ptr + B.meta.strides(0);
+                    end if;
+
+                when S_SUM =>
                     f_b := to_float(B.data(counter));
-						  
-						  if counter = 0 then
-						     f_res := f_b;
-						  else
-							  f_a   := to_float(result_reg.data(0));
-							  f_res := f_a + f_b;
-						  end if;
-						  
+
+                    if counter = 0 then
+                        f_res := f_b;
+                    else
+                        f_a   := to_float(result_reg.data(0));
+                        f_res := f_a + f_b;
+                    end if;
+
                     result_reg.data(0) <= to_slv(f_res);
 
                     if counter = B.meta.n_elems - 1 then
@@ -214,6 +234,33 @@ begin
                         counter <= counter + 1;
                     end if;
 
+                when S_SUB =>
+                    f_a := to_float(A.data(counter));
+                    f_b := to_float(B.data(counter));
+                    f_res := f_a - f_b;
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = A.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
+
+                when S_DIV =>
+                    f_a := to_float(A.data(counter));
+                    f_b := to_float(B.data(counter));
+                    f_res := f_a / f_b;
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = A.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
+
+
                 when S_MUL =>
                     f_a := to_float(A.data(counter));
                     f_b := to_float(B.data(counter));
@@ -226,9 +273,35 @@ begin
                     else
                         counter <= counter + 1;
                     end if;
-						  
-					 when S_POW => -- This is a huge hack, but right now all we use is squaring, so that's all I'm gonna do for now
-                    f_a := to_float(A.data(counter)); 
+
+                when S_SCALAR_A_MUL =>
+                    f_a := to_float(A.data(0));
+                    f_b := to_float(B.data(counter));
+                    f_res := f_a * f_b;
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = B.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
+
+                when S_SCALAR_B_MUL =>
+                    f_a := to_float(A.data(counter));
+                    f_b := to_float(B.data(0));
+                    f_res := f_a * f_b;
+                    result_reg.data(counter) <= to_slv(f_res);
+
+                    if counter = A.meta.n_elems - 1 then
+                        state   <= S_DONE;
+                        counter <= 0;
+                    else
+                        counter <= counter + 1;
+                    end if;
+
+                when S_POW => -- This is a huge hack, but right now all we use is squaring, so that's all I'm gonna do for now
+                    f_a := to_float(A.data(counter));
                     f_b := to_float(A.data(counter));
                     f_res := f_a * f_b;
                     result_reg.data(counter) <= to_slv(f_res);
