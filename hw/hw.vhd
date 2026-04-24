@@ -8,9 +8,18 @@ use work.instructions.all;
 
 entity HW is
     port (
-        CLK              : in  std_logic;
-        RST              : in  std_logic;
-        HALT             : out std_logic;
+        CLK  : 	in  std_logic;
+        RST  : 	in  std_logic;
+        HALT : 	out std_logic;
+		  SLIDERS: 	in std_logic_vector(9 downto 0);
+		  SEG0 : 	out std_logic_vector(7 downto 0);
+		  SEG1 : 	out std_logic_vector(7 downto 0);
+		  SEG2 : 	out std_logic_vector(7 downto 0);
+		  SEG3 : 	out std_logic_vector(7 downto 0);
+		  SEG4 : 	out std_logic_vector(7 downto 0);
+		  SEG5 : 	out std_logic_vector(7 downto 0);
+		  LEDS : 	out std_logic_vector(9 downto 0);
+		  
         curr_pc          : out std_logic_vector(31 downto 0);
         instr            : out std_logic_vector(15 downto 0);
         TENSOR_OUT       : out std_logic_vector(31 downto 0);
@@ -75,6 +84,10 @@ architecture PIPELINE of HW is
     signal alu_result  : tensor_t;
     signal alu_start   : std_logic := '0';
     signal alu_done    : std_logic;
+	 signal tensor_out_reg : std_logic_vector(31 downto 0);
+
+	 	 
+	 signal scratch_tensor_0: std_logic_vector(31 downto 0);
 begin
 
     irom_addr <= std_logic_vector(pc);
@@ -256,8 +269,8 @@ begin
                     end if;
 
                 when S_HALT =>
-                    null;
-
+						  tensor_out_reg <= scratch_area(to_integer(unsigned(SLIDERS(9 downto 5))))
+														.data(to_integer(unsigned(SLIDERS(4 downto 0))));
             end case;
         end if;
     end process;
@@ -269,6 +282,132 @@ begin
     ERR               <= stack_err;
     CONST_DATA        <= stack_push.data(0);
     STACK_READY_STATE <= stack_ready;
-    TENSOR_OUT        <= scratch_area(0).data(0);
+
+	 TENSOR_OUT <= tensor_out_reg;
+	 
+	 LEDS <= "0000000000";
+
+	 process(tensor_out_reg)
+	 begin
+		 case tensor_out_reg(31 downto 28) is 
+			  when "0000" => SEG5 <= "11000000"; -- 0
+			  when "0001" => SEG5 <= "11111001"; -- 1
+			  when "0010" => SEG5 <= "10100100"; -- 2
+			  when "0011" => SEG5 <= "10110000"; -- 3
+			  when "0100" => SEG5 <= "10011001"; -- 4
+			  when "0101" => SEG5 <= "10010010"; -- 5
+			  when "0110" => SEG5 <= "10000010"; -- 6
+			  when "0111" => SEG5 <= "11111000"; -- 7
+			  when "1000" => SEG5 <= "10000000"; -- 8
+			  when "1001" => SEG5 <= "10010000"; -- 9
+			  when "1010" => SEG5 <= "10001000"; -- A
+			  when "1011" => SEG5 <= "10000011"; -- B
+			  when "1100" => SEG5 <= "10100111"; -- C
+			  when "1101" => SEG5 <= "10100001"; -- D
+			  when "1110" => SEG5 <= "10000110"; -- E
+			  when "1111" => SEG5 <= "10001110"; -- F		
+			  when others => SEG5 <= "11111111"; -- blank
+		 end case;
+
+		 case tensor_out_reg(27 downto 24) is 
+			  when "0000" => SEG4 <= "11000000"; -- 0
+			  when "0001" => SEG4 <= "11111001"; -- 1
+			  when "0010" => SEG4 <= "10100100"; -- 2
+			  when "0011" => SEG4 <= "10110000"; -- 3
+			  when "0100" => SEG4 <= "10011001"; -- 4
+			  when "0101" => SEG4 <= "10010010"; -- 5
+			  when "0110" => SEG4 <= "10000010"; -- 6
+			  when "0111" => SEG4 <= "11111000"; -- 7
+			  when "1000" => SEG4 <= "10000000"; -- 8
+			  when "1001" => SEG4 <= "10010000"; -- 9
+			  when "1010" => SEG4 <= "10001000"; -- A
+			  when "1011" => SEG4 <= "10000011"; -- B
+			  when "1100" => SEG4 <= "10100111"; -- C
+			  when "1101" => SEG4 <= "10100001"; -- D
+			  when "1110" => SEG4 <= "10000110"; -- E
+			  when "1111" => SEG4 <= "10001110"; -- F		
+			  when others => SEG4 <= "11111111"; -- blank
+		 end case;
+
+		 case tensor_out_reg(23 downto 20) is 
+			  when "0000" => SEG3 <= "11000000"; -- 0
+			  when "0001" => SEG3 <= "11111001"; -- 1
+			  when "0010" => SEG3 <= "10100100"; -- 2
+			  when "0011" => SEG3 <= "10110000"; -- 3
+			  when "0100" => SEG3 <= "10011001"; -- 4
+			  when "0101" => SEG3 <= "10010010"; -- 5
+			  when "0110" => SEG3 <= "10000010"; -- 6
+			  when "0111" => SEG3 <= "11111000"; -- 7
+			  when "1000" => SEG3 <= "10000000"; -- 8
+			  when "1001" => SEG3 <= "10010000"; -- 9
+			  when "1010" => SEG3 <= "10001000"; -- A
+			  when "1011" => SEG3 <= "10000011"; -- B
+			  when "1100" => SEG3 <= "10100111"; -- C
+			  when "1101" => SEG3 <= "10100001"; -- D
+			  when "1110" => SEG3 <= "10000110"; -- E
+			  when "1111" => SEG3 <= "10001110"; -- F		
+			  when others => SEG3 <= "11111111"; -- blank
+		 end case;
+
+		 case tensor_out_reg(19 downto 16) is 
+			  when "0000" => SEG2 <= "11000000"; -- 0
+			  when "0001" => SEG2 <= "11111001"; -- 1
+			  when "0010" => SEG2 <= "10100100"; -- 2
+			  when "0011" => SEG2 <= "10110000"; -- 3
+			  when "0100" => SEG2 <= "10011001"; -- 4
+			  when "0101" => SEG2 <= "10010010"; -- 5
+			  when "0110" => SEG2 <= "10000010"; -- 6
+			  when "0111" => SEG2 <= "11111000"; -- 7
+			  when "1000" => SEG2 <= "10000000"; -- 8
+			  when "1001" => SEG2 <= "10010000"; -- 9
+			  when "1010" => SEG2 <= "10001000"; -- A
+			  when "1011" => SEG2 <= "10000011"; -- B
+			  when "1100" => SEG2 <= "10100111"; -- C
+			  when "1101" => SEG2 <= "10100001"; -- D
+			  when "1110" => SEG2 <= "10000110"; -- E
+			  when "1111" => SEG2 <= "10001110"; -- F		
+			  when others => SEG2 <= "11111111"; -- blank
+		 end case;
+
+		 case tensor_out_reg(15 downto 12) is 
+			  when "0000" => SEG1 <= "11000000"; -- 0
+			  when "0001" => SEG1 <= "11111001"; -- 1
+			  when "0010" => SEG1 <= "10100100"; -- 2
+			  when "0011" => SEG1 <= "10110000"; -- 3
+			  when "0100" => SEG1 <= "10011001"; -- 4
+			  when "0101" => SEG1 <= "10010010"; -- 5
+			  when "0110" => SEG1 <= "10000010"; -- 6
+			  when "0111" => SEG1 <= "11111000"; -- 7
+			  when "1000" => SEG1 <= "10000000"; -- 8
+			  when "1001" => SEG1 <= "10010000"; -- 9
+			  when "1010" => SEG1 <= "10001000"; -- A
+			  when "1011" => SEG1 <= "10000011"; -- B
+			  when "1100" => SEG1 <= "10100111"; -- C
+			  when "1101" => SEG1 <= "10100001"; -- D
+			  when "1110" => SEG1 <= "10000110"; -- E
+			  when "1111" => SEG1 <= "10001110"; -- F		
+			  when others => SEG1 <= "11111111"; -- blank
+		 end case;
+
+		 case tensor_out_reg(11 downto 8) is 
+			  when "0000" => SEG0 <= "11000000"; -- 0
+			  when "0001" => SEG0 <= "11111001"; -- 1
+			  when "0010" => SEG0 <= "10100100"; -- 2
+			  when "0011" => SEG0 <= "10110000"; -- 3
+			  when "0100" => SEG0 <= "10011001"; -- 4
+			  when "0101" => SEG0 <= "10010010"; -- 5
+			  when "0110" => SEG0 <= "10000010"; -- 6
+			  when "0111" => SEG0 <= "11111000"; -- 7
+			  when "1000" => SEG0 <= "10000000"; -- 8
+			  when "1001" => SEG0 <= "10010000"; -- 9
+			  when "1010" => SEG0 <= "10001000"; -- A
+			  when "1011" => SEG0 <= "10000011"; -- B
+			  when "1100" => SEG0 <= "10100111"; -- C
+			  when "1101" => SEG0 <= "10100001"; -- D
+			  when "1110" => SEG0 <= "10000110"; -- E
+			  when "1111" => SEG0 <= "10001110"; -- F		
+			  when others => SEG0 <= "11111111"; -- blank
+		 end case;
+    end process;
 
 end architecture PIPELINE;
