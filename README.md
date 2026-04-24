@@ -47,7 +47,8 @@ VM Result:
 
 
 HDL Result (Seven Seg shows upper 6 nibbles of the float):
-<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/363c5a8b-b44e-4f01-8796-b4f2f2a5c01b" />
 <img width="1894" height="255" alt="image" src="https://github.com/user-attachments/assets/dd368ee7-dd77-41b4-b494-d2fd09cbf2d5" />
+
+<img width="800" height="600" alt="image" src="https://github.com/user-attachments/assets/363c5a8b-b44e-4f01-8796-b4f2f2a5c01b" />
 
 (0x4311_6B85 = 145.42, simulation waveforms show this as the result and we'll just have to trust that the FPGA truly got the lower byte right too)
