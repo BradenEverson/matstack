@@ -21,8 +21,8 @@ c_grad = zeros_like(c)
 ; Learning rate
 lr = 0.01
 
-; Training loop (500 epochs)
-for (e in 0->100000) {
+; Training loop (10000 epochs)
+for (e in 0->10000) {
     ; TODO: batching (need slices for that)
 
     ; Forward
@@ -34,6 +34,7 @@ for (e in 0->100000) {
     S2 = epsilon * sum(M^2)
     S = S1 + S2
     J = L + S
+    debug(J)
 
     ; Backward
     dv = -1 * (y - v)

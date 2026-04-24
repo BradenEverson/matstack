@@ -375,8 +375,14 @@ pub const Parser = struct {
                 return inner;
             },
 
-            else => return try self.literal(),
+            else => return try self.literal_or_slice(),
         }
+    }
+
+    fn literal_or_slice(self: *Parser) AnyParserError!*const Expr {
+        const lit = try self.literal();
+
+        return lit;
     }
 
     fn literal(self: *Parser) AnyParserError!*const Expr {
@@ -388,7 +394,7 @@ pub const Parser = struct {
                 const literal_expr = try self.arena.allocator().create(Expr);
                 literal_expr.* = .{ .literal = .{ .multidim = .empty } };
                 while (self.peek() != .close_bracket) {
-                    const subliteral_expr = try self.literal();
+                    const subliteral_expr = try self.literal_or_slice();
 
                     try literal_expr.literal.multidim.append(
                         self.arena.allocator(),
