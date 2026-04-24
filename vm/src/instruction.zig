@@ -52,6 +52,7 @@ pub const Command = enum(u8) {
 
     // Debug
     DEBUG_PRINT,
+    HALT,
 };
 
 cmd: Command = .NOP,

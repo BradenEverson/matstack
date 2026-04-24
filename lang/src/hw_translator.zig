@@ -221,13 +221,11 @@ pub fn main(init: std.process.Init) !void {
         if (i > 0)
             try write.print("\t    ", .{});
         try write.print(" x\"{X:0>2}{X:0>2}\"", .{ @intFromEnum(instr.cmd), instr.extra });
-        if (i >= vm.instructions.len - 1) {
-            try write.print(" when others;\n", .{});
-        } else {
-            try write.print(" when x\"{X:0>8}\",\n", .{i});
-        }
+        try write.print(" when x\"{X:0>8}\", -- {any} \n", .{ i, instr });
     }
 
+    try write.print("\t    ", .{});
+    try write.print(" x\"{X:0>2}{X:0>2}\" when others; -- halt\n", .{ @intFromEnum(matstack.Instruction.Command.HALT), 0 });
     try write.print("{s}\n", .{footer_irom});
     try writer.flush();
 
