@@ -26,6 +26,8 @@ pub const CompileError = error{
     MalformedTensor,
     /// When a variable is used before initialized
     UseBeforeDefine,
+    /// When a slice is using too many dimensions than supported :(
+    SliceTooHigh,
 };
 
 /// A nice little structure for maintaining free
@@ -139,6 +141,24 @@ pub const VmIR = struct {
             .slice => |s| {
                 try self.evalExpr(io, alloc, s.on);
                 // Format of slice instruction
+                if (s.slice.items.len > 4) {
+                    return error.SliceTooHigh;
+                }
+
+                for (s.slice.items, 0..) |slice, dim| {
+                    const cmd = try dimToSliceCmd(dim);
+                    if (slice.start) |start| {
+                        var start_slice: u8 = @truncate(start);
+                        start_slice |= 0x80; // set the start bit
+                        try self.instructions.append(alloc, .{ .cmd = cmd, .extra = start_slice });
+                    }
+
+                    if (slice.end) |end| {
+                        var end_slice: u8 = @truncate(end);
+                        end_slice &= 0x7F; // set the start bit to end
+                        try self.instructions.append(alloc, .{ .cmd = cmd, .extra = end_slice });
+                    }
+                }
             },
 
             .loop => |l| {
@@ -398,5 +418,15 @@ fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
         .mul => .MUL,
         .sub => .SUB,
         .pow => .POW,
+    };
+}
+
+fn dimToSliceCmd(dim: usize) !matstack.Instruction.Command {
+    return switch (dim) {
+        0 => .SLICE0,
+        1 => .SLICE1,
+        2 => .SLICE2,
+        3 => .SLICE3,
+        else => error.SliceTooHigh,
     };
 }

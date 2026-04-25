@@ -19,7 +19,12 @@ pub const Expr = union(enum) {
     literal: Literal,
     rand_tensor: std.ArrayList(usize),
     variable: []const u8,
-    slice: struct { on: *const Expr, slice: std.ArrayList(usize) = .empty },
+    slice: struct { on: *const Expr, slice: std.ArrayList(Slice) = .empty },
+};
+
+pub const Slice = struct {
+    start: ?usize,
+    end: ?usize,
 };
 
 pub const Literal = union(enum) {

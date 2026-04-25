@@ -64,6 +64,7 @@ pub const TokenTag = enum {
     dot,
     gt,
     lt,
+    colon,
 };
 
 pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
@@ -85,6 +86,7 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ ".", .dot },
     .{ ">", .gt },
     .{ "<", .lt },
+    .{ ":", .colon },
 });
 
 pub const Token = struct {
