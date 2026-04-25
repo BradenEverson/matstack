@@ -37,6 +37,63 @@ pub fn equal(A: Tensor, B: Tensor) bool {
     return std.mem.eql(usize, A.shape, B.shape) and std.mem.eql(f32, A.data, B.data);
 }
 
+/// Slices the tensor along a provided dimension.
+/// If is_start is true, returns indices [0, limit) along that dim
+/// if not, returns indices [limit, end)  along that dim
+pub fn slice(
+    self: *const Tensor,
+    alloc: Allocator,
+    dim: usize,
+    limit: usize,
+    is_start: bool,
+) !Tensor {
+    if (dim >= self.shape.len)
+        return error.InvalidShapeForOp;
+
+    const dim_size = self.shape[dim];
+
+    if (limit > dim_size)
+        return error.InvalidShapeForOp;
+
+    const start_idx: usize = if (is_start) 0 else limit;
+    const end_idx: usize = if (is_start) limit else dim_size;
+    const new_dim_size = end_idx - start_idx;
+
+    if (new_dim_size == 0)
+        return error.InvalidShapeForOp;
+
+    const new_shape = try alloc.dupe(usize, self.shape);
+    errdefer alloc.free(new_shape);
+    new_shape[dim] = new_dim_size;
+
+    var result = try makeTensor(alloc, new_shape);
+    alloc.free(new_shape);
+    errdefer result.deinit(alloc);
+
+    var total: usize = 1;
+    for (result.shape) |s| total *= s;
+
+    var idx = try alloc.alloc(usize, result.shape.len);
+    defer alloc.free(idx);
+    @memset(idx, 0);
+
+    for (0..total) |flat_out| {
+        var rem = flat_out;
+        for (0..result.shape.len) |i| {
+            idx[i] = rem / result.strides[i];
+            rem %= result.strides[i];
+        }
+
+        var src_idx = try alloc.dupe(usize, idx);
+        defer alloc.free(src_idx);
+        src_idx[dim] += start_idx;
+
+        result.data[flat_out] = self.at(src_idx);
+    }
+
+    return result;
+}
+
 /// Returns the broadcast output shape, or error if shapes are incompatible.
 /// Caller owns the returned slice.
 pub fn broadcastShape(
@@ -736,4 +793,17 @@ test "sum" {
     const D = try A.sumAll(alloc);
     try std.testing.expectEqualSlices(usize, &[_]usize{}, D.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{1 + 2 + 3 + 4 + 5 + 6}, D.data);
+}
+
+test "slice matrix" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var A: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 3 });
+    A.setMany(&[_]f32{ 1, 2, 3, 4, 5, 6, 7, 8, 9 });
+
+    const S = try A.slice(alloc, 0, 2, true);
+    try std.testing.expectEqualSlices(usize, &[_]usize{ 2, 3 }, S.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 2, 3, 4, 5, 6 }, S.data);
 }
