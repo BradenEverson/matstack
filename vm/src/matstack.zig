@@ -211,56 +211,27 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
-            .SLICE0 => {
-                var res = try vm.stack.pop();
+            .SLICE => {
+                const slice_info = try vm.stack.pop();
+                var slicing = try vm.stack.pop();
+                defer slicing.deinit(alloc);
+
+                var res = try slicing.slice(
+                    alloc,
+                    @intFromFloat(slice_info.data[0]),
+                    @intFromFloat(slice_info.data[1]),
+                    true,
+                );
                 defer res.deinit(alloc);
 
-                const lim: u7 = @truncate(extra);
-                const lim_usize = @as(usize, lim);
+                const full_slice = try res.slice(
+                    alloc,
+                    @intFromFloat(slice_info.data[0]),
+                    @intFromFloat(slice_info.data[2]),
+                    false,
+                );
 
-                const start = (extra & 0x80) == 0x80;
-
-                const slice = try res.slice(alloc, 0, lim_usize, start);
-                try vm.stack.push(slice);
-            },
-
-            .SLICE1 => {
-                var res = try vm.stack.pop();
-                defer res.deinit(alloc);
-
-                const lim: u7 = @truncate(extra);
-                const lim_usize = @as(usize, lim);
-
-                const start = (extra & 0x80) == 0x80;
-
-                const slice = try res.slice(alloc, 1, lim_usize, start);
-                try vm.stack.push(slice);
-            },
-
-            .SLICE2 => {
-                var res = try vm.stack.pop();
-                defer res.deinit(alloc);
-
-                const lim: u7 = @truncate(extra);
-                const lim_usize = @as(usize, lim);
-
-                const start = (extra & 0x80) == 0x80;
-
-                const slice = try res.slice(alloc, 2, lim_usize, start);
-                try vm.stack.push(slice);
-            },
-
-            .SLICE3 => {
-                var res = try vm.stack.pop();
-                defer res.deinit(alloc);
-
-                const lim: u7 = @truncate(extra);
-                const lim_usize = @as(usize, lim);
-
-                const start = (extra & 0x80) == 0x80;
-
-                const slice = try res.slice(alloc, 3, lim_usize, start);
-                try vm.stack.push(slice);
+                try vm.stack.push(full_slice);
             },
 
             .RELU => {
