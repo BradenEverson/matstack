@@ -136,6 +136,11 @@ pub const VmIR = struct {
                 );
             },
 
+            .slice => |s| {
+                try self.evalExpr(io, alloc, s.on);
+                // Format of slice instruction
+            },
+
             .loop => |l| {
                 // Create loop variable
                 const start = try matstack.Tensor.makeTensor(alloc, &[0]usize{});

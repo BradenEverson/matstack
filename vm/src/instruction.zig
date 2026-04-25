@@ -22,7 +22,25 @@ pub const Command = enum(u8) {
     EXP,
     POW,
     LOG,
+
+    // Extra is
+    // [ start ] [ bound ]
+    // [ 1-bit ] [ 7-bit ]
+    //
+    // Start bit represents if this is a starting or ending bound
+    // Ex: [1:] would be a starting bound, [:5] ending, [1:3]
+    // would be two subsequent commands as a start and end
+    //
+    // These are also placed in the enum like they are such that
+    // you can interpret the lower 2-bits of the opcode as the
+    // dimension the slice is operating on!
+    SLICE0 = 0x10,
+    SLICE1 = 0x11,
+    SLICE2 = 0x12,
+    SLICE3 = 0x13,
+
     ZEROS_LIKE,
+
     // Element wise greater than (1 for true, 0 for false)
     GT,
     // Element wise less than (1 for true, 0 for false)
