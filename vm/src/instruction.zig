@@ -34,10 +34,18 @@ pub const Command = enum(u8) {
     // These are also placed in the enum like they are such that
     // you can interpret the lower 2-bits of the opcode as the
     // dimension the slice is operating on!
+    // These are the "fixed" slices, runtime slicing uses stack ops for this
     SLICE0 = 0x10,
     SLICE1 = 0x11,
     SLICE2 = 0x12,
     SLICE3 = 0x13,
+
+    /// "Runtime" version of the slice
+    /// Operands are popped in this order:
+    /// - dim, must be a scalar
+    /// - start: must be a scalar
+    /// - end: must be a scalar
+    SLICE,
 
     ZEROS_LIKE,
 
