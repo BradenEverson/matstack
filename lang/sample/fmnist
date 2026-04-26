@@ -1,9 +1,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Performing from scratch
-;; stochastic gradient 
-;; descent on the Fashion
-;; MNIST dataset!!!
-;;
+;; (not yet stochastic)
+;; gradient descent on the 
+;; Fashion MNIST dataset!!!
 ;;
 ;; Or at least trying
 ;;
@@ -17,7 +16,61 @@
 X_train = load("weights/fmnist_x_train")
 y_train = load("weights/fmnist_y_train")
 
-X_test = load("weights/fmnist_x_test")
-y_test = load("weights/fmnist_y_test")
+X_test  = load("weights/fmnist_x_test")
+y_test  = load("weights/fmnist_y_test")
 
-debug(y_test)
+epsilon = 0.01
+lr = 0.01
+
+; Architecture: 784 -> 128 -> 10
+W = rand(128, 784) * 0.001
+W_grad = zeros_like(W)
+
+b = rand(128, 1) * 0.001
+b_grad = zeros_like(b)
+
+M = rand(10, 128) * 0.001
+M_grad = zeros_like(M)
+
+c = rand(10, 1) * 0.001
+c_grad = zeros_like(c)
+
+for (e in 0->1000) {
+    ; Forward
+    u = W @ X_train + b
+    h = relu(u)
+    v = M @ h + c
+    p = softmax(v)
+
+    L = cross_entropy(p, y_train)
+    S = epsilon * sum(W^2) + epsilon * sum(M^2)
+    J = L + S
+    debug(sum(J) / 1000)
+
+    ; Backward
+    dv = (p - y_train) / 1000
+    c_grad = sum_cols(dv)
+    M_grad = dv @ transpose(h) + 2 * epsilon * M
+    dh = transpose(M) @ dv
+    du = dh * (u > 0)
+    b_grad = sum_cols(du)
+    W_grad = du @ transpose(X_train) + 2 * epsilon * W
+
+    W = W - lr * W_grad
+    M = M - lr * M_grad
+    b = b - lr * b_grad
+    c = c - lr * c_grad
+}
+
+
+; final forward on the test set
+
+u = W @ X_test + b
+h = relu(u)
+v = M @ h + c
+p = softmax(v)
+
+L = cross_entropy(p, y_test)
+S = epsilon * sum(W^2) + epsilon * sum(M^2)
+J = L + S
+debug(sum(J) / 1000)

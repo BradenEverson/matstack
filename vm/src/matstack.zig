@@ -158,6 +158,32 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .SOFTMAX => {
+                var on = try vm.stack.pop();
+                defer on.deinit(alloc);
+
+                const res = try on.softmax(alloc);
+                try vm.stack.push(res);
+            },
+
+            .CROSS_ENTROPY => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.crossEntropyLoss(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
+            .SUM_REDUCE => {
+                var on = try vm.stack.pop();
+                defer on.deinit(alloc);
+
+                const res = try on.sumReduce(alloc, @as(usize, extra));
+                try vm.stack.push(res);
+            },
+
             .INC => {
                 var val = try vm.stack.peek();
                 val.incInPlace();
@@ -308,7 +334,10 @@ pub const VirtualMachine = struct {
                 std.debug.print("{any}\n", .{top});
             },
 
-            else => {}, // TODO
+            else => {
+                std.debug.print("TODO: {any}\n", .{cmd});
+                @panic("TODO!!!\n");
+            },
         }
 
         return false;

@@ -392,7 +392,6 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .debug => .{ .cmd = .DEBUG_PRINT },
         .softmax => .{ .cmd = .SOFTMAX },
         .relu => .{ .cmd = .RELU },
-        .cross_entropy => .{ .cmd = .CROSS_ENTROPY },
         .ln => .{ .cmd = .LOG },
         .exp => .{ .cmd = .EXP },
         .sum => .{ .cmd = .SUM },
@@ -404,6 +403,7 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .load => unreachable,
 
         // Not applicable
+        .cross_entropy => unreachable,
         .for_kw => unreachable,
         .in => unreachable,
     };
@@ -419,5 +419,6 @@ fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
         .mul => .MUL,
         .sub => .SUB,
         .pow => .POW,
+        .cross_entropy => .CROSS_ENTROPY,
     };
 }

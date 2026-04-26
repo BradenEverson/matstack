@@ -405,6 +405,41 @@ pub fn sumAll(self: *const Tensor, alloc: Allocator) !Tensor {
     return result;
 }
 
+pub fn sumReduce(self: *const Tensor, alloc: Allocator, axis: usize) !Tensor {
+    if (axis >= self.shape.len)
+        return error.InvalidShapeForOp;
+
+    const out_shape = try alloc.dupe(usize, self.shape);
+    defer alloc.free(out_shape);
+    out_shape[axis] = 1;
+
+    var result = try makeTensor(alloc, out_shape);
+
+    @memset(result.data, 0);
+
+    var total: usize = 1;
+    for (self.shape) |s| total *= s;
+
+    var idx = try alloc.alloc(usize, self.shape.len);
+    defer alloc.free(idx);
+    @memset(idx, 0);
+
+    for (0..total) |flat_in| {
+        var rem = flat_in;
+        for (0..self.shape.len) |i| {
+            idx[i] = rem / self.strides[i];
+            rem %= self.strides[i];
+        }
+
+        const saved = idx[axis];
+        idx[axis] = 0;
+        result.atMut(idx).* += self.at(idx);
+        idx[axis] = saved;
+    }
+
+    return result;
+}
+
 pub fn sumReduceRows(self: *const Tensor, alloc: Allocator) !Tensor {
     if (self.shape.len != 2)
         return error.InvalidShapeForOp;
@@ -534,8 +569,8 @@ pub fn softmax(self: *const Tensor, alloc: Allocator) !Tensor {
 }
 
 pub fn crossEntropyLoss(
-    predictions: *const Tensor,
-    labels: *const Tensor,
+    predictions: Tensor,
+    labels: Tensor,
     alloc: Allocator,
 ) !Tensor {
     if (predictions.shape.len != 2 or labels.shape.len != 2)

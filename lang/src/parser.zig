@@ -37,6 +37,7 @@ pub const BinaryOp = enum {
     div,
     matmul,
     pow,
+    cross_entropy,
 };
 
 pub const ParserError = error{
@@ -369,6 +370,19 @@ pub const Parser = struct {
 
                         return load_tensor;
                     },
+                    .cross_entropy => {
+                        try self.consume(.open_paren);
+                        const p = try self.term();
+                        try self.consume(.comma);
+                        const y = try self.term();
+                        try self.consume(.close_paren);
+
+                        const binary_expr = try self.arena.allocator().create(Expr);
+                        binary_expr.* = .{ .binary_op = .{ .op = .cross_entropy, .left = p, .right = y } };
+
+                        return binary_expr;
+                    },
+
                     else => {
                         try self.consume(.open_paren);
                         const on = try self.term();
