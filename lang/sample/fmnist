@@ -19,3 +19,5 @@ y_train = load("weights/fmnist_y_train")
 
 X_test = load("weights/fmnist_x_test")
 y_test = load("weights/fmnist_y_test")
+
+debug(y_test)
