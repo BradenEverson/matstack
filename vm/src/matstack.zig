@@ -242,22 +242,12 @@ pub const VirtualMachine = struct {
                 var slicing = try vm.stack.pop();
                 defer slicing.deinit(alloc);
 
-                var res = try slicing.slice(
+                const res = try slicing.sliceRanges(
                     alloc,
-                    @intFromFloat(slice_info.data[0]),
-                    @intFromFloat(slice_info.data[1]),
-                    true,
-                );
-                defer res.deinit(alloc);
-
-                const full_slice = try res.slice(
-                    alloc,
-                    @intFromFloat(slice_info.data[0]),
-                    @intFromFloat(slice_info.data[2]),
-                    false,
+                    slice_info,
                 );
 
-                try vm.stack.push(full_slice);
+                try vm.stack.push(res);
             },
 
             .RELU => {

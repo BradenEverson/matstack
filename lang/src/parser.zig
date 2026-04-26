@@ -20,7 +20,7 @@ pub const Expr = union(enum) {
     rand_tensor: std.ArrayList(usize),
     load: []const u8,
     variable: []const u8,
-    slice: struct { on: *const Expr, slice: std.ArrayList(*const Expr) = .empty },
+    slice: struct { on: *const Expr, slice: *const Expr },
 };
 
 pub const Literal = union(enum) {
@@ -321,13 +321,14 @@ pub const Parser = struct {
 
     fn primary(self: *Parser) AnyParserError!*const Expr {
         const current_token = self.tokens[self.cursor];
+        var expr: *const Expr = undefined;
 
         switch (current_token.tag) {
             .ident => {
                 const variable_expr = try self.arena.allocator().create(Expr);
                 variable_expr.* = .{ .variable = current_token.data };
                 self.advance();
-                return variable_expr;
+                expr = variable_expr;
             },
 
             .keyword => {
@@ -398,20 +399,27 @@ pub const Parser = struct {
 
             .open_paren => {
                 self.advance();
-                const inner = self.term();
+                const inner = try self.term();
                 try self.consume(.close_paren);
-
-                return inner;
+                expr = inner;
             },
 
-            else => return try self.literal_or_slice(),
+            else => {
+                expr = try self.literal();
+            },
         }
-    }
 
-    fn literal_or_slice(self: *Parser) AnyParserError!*const Expr {
-        const lit = try self.literal();
+        if (self.peek() == .open_bracket) {
+            try self.consume(.open_bracket);
+            const slice = try self.expression();
+            try self.consume(.close_bracket);
 
-        return lit;
+            const slice_expr = try self.arena.allocator().create(Expr);
+            slice_expr.* = .{ .slice = .{ .on = expr, .slice = slice } };
+            return slice_expr;
+        }
+
+        return expr;
     }
 
     fn literal(self: *Parser) AnyParserError!*const Expr {
@@ -423,7 +431,7 @@ pub const Parser = struct {
                 const literal_expr = try self.arena.allocator().create(Expr);
                 literal_expr.* = .{ .literal = .{ .multidim = .empty } };
                 while (self.peek() != .close_bracket) {
-                    const subliteral_expr = try self.literal_or_slice();
+                    const subliteral_expr = try self.literal();
 
                     try literal_expr.literal.multidim.append(
                         self.arena.allocator(),

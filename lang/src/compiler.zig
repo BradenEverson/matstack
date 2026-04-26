@@ -151,10 +151,8 @@ pub const VmIR = struct {
 
             .slice => |s| {
                 try self.evalExpr(io, alloc, s.on);
-                for (s.slice.items) |slice| {
-                    try self.evalExpr(io, alloc, slice);
-                    try self.instructions.append(alloc, .{ .cmd = .SLICE, .extra = 0 });
-                }
+                try self.evalExpr(io, alloc, s.slice);
+                try self.instructions.append(alloc, .{ .cmd = .SLICE, .extra = 0 });
             },
 
             .loop => |l| {
