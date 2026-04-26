@@ -93,6 +93,12 @@ pub const VmIR = struct {
                 try self.instructions.append(alloc, .{ .cmd = cmd });
             },
 
+            .load => |s| {
+                // TODO: Load file string and read it out as a tensor, then
+                // do all the usual constant stuff we usually do
+                std.debug.print("{s}\n", .{s});
+            },
+
             .unary_op => |u| {
                 try self.evalExpr(io, alloc, u.expr);
 
@@ -385,9 +391,14 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .sum => .{ .cmd = .SUM },
         .transpose => .{ .cmd = .TRANSPOSE },
         .sum_cols => .{ .cmd = .SUM_REDUCE, .extra = 1 },
-        .rand => unreachable, // Handled at compile time
-        .for_kw => unreachable, // not applicable
-        .in => unreachable, // not applicable
+
+        // Handled at compile time
+        .rand => unreachable,
+        .load => unreachable,
+
+        // Not applicable
+        .for_kw => unreachable,
+        .in => unreachable,
     };
 }
 

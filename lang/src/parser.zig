@@ -18,6 +18,7 @@ pub const Expr = union(enum) {
     },
     literal: Literal,
     rand_tensor: std.ArrayList(usize),
+    load: []const u8,
     variable: []const u8,
     slice: struct { on: *const Expr, slice: std.ArrayList(*const Expr) = .empty },
 };
@@ -354,6 +355,21 @@ pub const Parser = struct {
 
                         try self.consume(.close_paren);
                         return rand_tensor;
+                    },
+                    .load => {
+                        const load_tensor = try self.arena.allocator().create(Expr);
+
+                        try self.consume(.open_paren);
+                        try self.consume(.quote);
+
+                        const tok = self.tokens[self.cursor];
+                        load_tensor.* = .{ .load = tok.data };
+                        try self.consume(.ident);
+
+                        try self.consume(.quote);
+                        try self.consume(.close_paren);
+
+                        return load_tensor;
                     },
                     else => {
                         try self.consume(.open_paren);

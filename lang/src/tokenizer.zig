@@ -21,6 +21,7 @@ pub const Keyword = enum {
     sum_cols,
     for_kw,
     in,
+    load,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -37,6 +38,7 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "sum_cols", .sum_cols },
     .{ "for", .for_kw },
     .{ "in", .in },
+    .{ "load", .load },
 });
 
 pub const TokenTag = enum {
@@ -65,6 +67,7 @@ pub const TokenTag = enum {
     gt,
     lt,
     colon,
+    quote,
 };
 
 pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
@@ -87,6 +90,7 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ ">", .gt },
     .{ "<", .lt },
     .{ ":", .colon },
+    .{ "\"", .quote },
 });
 
 pub const Token = struct {

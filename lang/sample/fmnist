@@ -1,0 +1,21 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Performing from scratch
+;; stochastic gradient 
+;; descent on the Fashion
+;; MNIST dataset!!!
+;;
+;;
+;; Or at least trying
+;;
+;; as a sidenote I like 
+;; this header box, 
+;; semicolon comments are 
+;; kinda sick
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+X_train = load("weights/fmnist_x_train")
+y_train = load("weights/fmnist_y_train")
+
+X_test = load("weights/fmnist_x_test")
+y_test = load("weights/fmnist_y_test")
