@@ -18,7 +18,7 @@ pub fn parseConstantPool(
     alloc: Allocator,
     tensor_count: usize,
     cpool_bytes: []const u8,
-) ![]const Tensor {
+) ![]Tensor {
     const constant_pool = try alloc.alloc(Tensor, tensor_count);
     errdefer alloc.free(constant_pool);
     var rest = cpool_bytes;
@@ -36,13 +36,26 @@ pub const VmError = error{
 };
 
 pub const VirtualMachine = struct {
-    constant_pool: []const Tensor,
+    constant_pool: []Tensor,
     stack: OperandStack = .{},
 
     instructions: []const Instruction,
     pc: usize = 0,
 
     scratch_area: [SCRATCH_SIZE]Operand = undefined,
+    max_scratch_used: usize = 0,
+
+    pub fn deinit(self: *VirtualMachine, alloc: Allocator) void {
+        alloc.free(self.instructions);
+        for (self.constant_pool) |*tensor| tensor.deinit(alloc);
+        alloc.free(self.constant_pool);
+        while (self.stack.sp > 0) {
+            var tensor = self.stack.pop() catch unreachable;
+            tensor.deinit(alloc);
+        }
+
+        for (self.scratch_area[0 .. self.max_scratch_used + 1]) |*scratch| scratch.deinit(alloc);
+    }
 
     pub fn tryParse(alloc: Allocator, bytes: []const u8) !VirtualMachine {
         var rest = bytes;
@@ -277,6 +290,10 @@ pub const VirtualMachine = struct {
 
                 const idx = @as(usize, extra);
 
+                // TODO: assumes compiler will sequentially walk the scratch area,
+                // if not UB will happen
+                if (idx > vm.max_scratch_used) vm.max_scratch_used = idx;
+
                 vm.scratch_area[idx] = try res.clone(alloc);
             },
 
@@ -320,7 +337,8 @@ pub const VirtualMachine = struct {
             },
 
             .DEBUG_PRINT => {
-                const top = try vm.stack.pop();
+                var top = try vm.stack.pop();
+                defer top.deinit(alloc);
                 std.debug.print("{any}\n", .{top});
             },
 

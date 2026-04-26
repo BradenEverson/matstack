@@ -3,10 +3,8 @@ const matstack = @import("matstack");
 const VirtualMachine = matstack.VirtualMachine;
 
 pub fn main(init: std.process.Init) !void {
-    const arena = init.arena;
     const io = init.io;
-
-    const alloc = arena.allocator();
+    const alloc = init.gpa;
 
     var args = init.minimal.args.iterate();
     _ = args.next();
@@ -18,10 +16,11 @@ pub fn main(init: std.process.Init) !void {
             alloc,
             .unlimited,
         );
-        errdefer alloc.free(bytecode);
+        defer alloc.free(bytecode);
 
         var vm = try VirtualMachine.tryParse(alloc, bytecode);
-        while (!(try vm.step(arena.allocator()))) {}
+        defer vm.deinit(alloc);
+        while (!(try vm.step(alloc))) {}
     } else {
         std.debug.print("Missing bytecode file!!!\n", .{});
         std.process.exit(1);
