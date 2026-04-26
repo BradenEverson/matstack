@@ -50,9 +50,9 @@ pub fn main(init: std.process.Init) !void {
 
     try vmir.fromAst(init.io, alloc, ast.items);
 
-    for (vmir.tensors.items) |tensor| {
-        std.debug.print("{any}\n", .{tensor});
-    }
+    // for (vmir.tensors.items) |tensor| {
+    //     std.debug.print("{any}\n", .{tensor});
+    // }
 
     for (vmir.instructions.items) |instr| {
         std.debug.print("{} - {}\n", .{ instr.cmd, instr.extra });

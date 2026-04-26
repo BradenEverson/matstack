@@ -94,9 +94,16 @@ pub const VmIR = struct {
             },
 
             .load => |s| {
-                // TODO: Load file string and read it out as a tensor, then
-                // do all the usual constant stuff we usually do
                 std.debug.print("{s}\n", .{s});
+                const bytes = try std.Io.Dir.cwd().readFileAlloc(io, s, alloc, .unlimited);
+                const tensor, _ = try matstack.Tensor.fromBytes(alloc, bytes);
+
+                const cpool_idx = try self.registerTensor(alloc, tensor);
+
+                try self.instructions.append(alloc, .{
+                    .cmd = .LOAD_CONST,
+                    .extra = @truncate(cpool_idx),
+                });
             },
 
             .unary_op => |u| {
