@@ -360,13 +360,11 @@ pub const Parser = struct {
                         const load_tensor = try self.arena.allocator().create(Expr);
 
                         try self.consume(.open_paren);
-                        try self.consume(.quote);
 
                         const tok = self.tokens[self.cursor];
                         load_tensor.* = .{ .load = tok.data };
-                        try self.consume(.ident);
+                        try self.consume(.string);
 
-                        try self.consume(.quote);
                         try self.consume(.close_paren);
 
                         return load_tensor;

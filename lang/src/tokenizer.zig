@@ -67,7 +67,7 @@ pub const TokenTag = enum {
     gt,
     lt,
     colon,
-    quote,
+    string,
 };
 
 pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
@@ -90,7 +90,6 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ ">", .gt },
     .{ "<", .lt },
     .{ ":", .colon },
-    .{ "\"", .quote },
 });
 
 pub const Token = struct {
@@ -140,6 +139,26 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                     .line = line,
                     .col = start_col,
                     .data = ident,
+                };
+            },
+
+            '"' => {
+                idx += 1;
+                col += 1;
+
+                while (idx < stream.len and stream[idx] != '"') {
+                    idx += 1;
+                    col += 1;
+                }
+
+                const string = stream[start_idx + 1 .. idx];
+                idx += 1;
+
+                curr = Token{
+                    .tag = .string,
+                    .line = line,
+                    .col = start_col,
+                    .data = string,
                 };
             },
 
