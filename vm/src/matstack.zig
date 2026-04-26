@@ -295,8 +295,8 @@ pub const VirtualMachine = struct {
             },
 
             .BRANCH_ALWAYS => {
-                const offset: i8 = @bitCast(extra);
-                vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+                const pc = @as(usize, extra);
+                vm.pc = pc;
             },
 
             .BRANCH_EQ => {
@@ -304,8 +304,8 @@ pub const VirtualMachine = struct {
                 defer cmp.deinit(alloc);
 
                 if (cmp.isZero()) {
-                    const offset: i8 = @bitCast(extra);
-                    vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+                    const pc = @as(usize, extra);
+                    vm.pc = pc;
                 }
             },
 
@@ -314,8 +314,8 @@ pub const VirtualMachine = struct {
                 defer cmp.deinit(alloc);
 
                 if (!cmp.isZero()) {
-                    const offset: i8 = @bitCast(extra);
-                    vm.pc = @intCast(@as(i64, @intCast(vm.pc)) + offset);
+                    const pc = @as(usize, extra);
+                    vm.pc = pc;
                 }
             },
 

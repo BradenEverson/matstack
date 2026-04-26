@@ -197,14 +197,7 @@ pub const VmIR = struct {
                 try self.instructions.append(alloc, .{ .cmd = .STORE_I, .extra = slot });
                 try self.instructions.append(alloc, .{ .cmd = .SUB });
 
-                const len_instr = self.instructions.items.len - s;
-
-                const len: u32 = @truncate(len_instr);
-                const len_i: isize = @intCast(len + 1);
-                const jump: isize = 0 - len_i;
-                const jump_i8: i8 = @truncate(jump);
-                const jump_u8: u8 = @bitCast(jump_i8);
-                try self.instructions.append(alloc, .{ .cmd = .BRANCH_NE, .extra = jump_u8 });
+                try self.instructions.append(alloc, .{ .cmd = .BRANCH_NE, .extra = @truncate(s) });
 
                 // when we're done, counter variable is out of scope!
                 try self.slotstack.reused.append(alloc, slot);

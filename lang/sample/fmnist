@@ -1,6 +1,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Performing from scratch
-;; (not yet stochastic)
+;; Performing stochastic
 ;; gradient descent on the 
 ;; Fashion MNIST dataset!!!
 ;;
@@ -15,62 +14,71 @@
 
 X_train = load("weights/fmnist_x_train")
 y_train = load("weights/fmnist_y_train")
-
 X_test  = load("weights/fmnist_x_test")
 y_test  = load("weights/fmnist_y_test")
 
-epsilon = 0.01
-lr = 0.01
+epsilon = 0.00001
+lr = 0.001
+batch_size = 30
 
 ; Architecture: 784 -> 128 -> 10
 W = rand(128, 784) * 0.001
 W_grad = zeros_like(W)
-
 b = rand(128, 1) * 0.001
 b_grad = zeros_like(b)
-
 M = rand(10, 128) * 0.001
 M_grad = zeros_like(M)
-
 c = rand(10, 1) * 0.001
 c_grad = zeros_like(c)
 
-for (e in 0->1000) {
-    ; Forward
-    u = W @ X_train + b
-    h = relu(u)
-    v = M @ h + c
-    p = softmax(v)
+x_ranges_base = [[0, 784], [0, 0]]
+y_ranges_base = [[0, 10],  [0, 0]]
 
-    L = cross_entropy(p, y_train)
-    S = epsilon * sum(W^2) + epsilon * sum(M^2)
-    J = L + S
-    debug(sum(J) / 1000)
+prev = [[0, 0], [1, 0]]
+curr = [[0, 0], [0, 1]]
 
-    ; Backward
-    dv = (p - y_train) / 1000
-    c_grad = sum_cols(dv)
-    M_grad = dv @ transpose(h) + 2 * epsilon * M
-    dh = transpose(M) @ dv
-    du = dh * (u > 0)
-    b_grad = sum_cols(du)
-    W_grad = du @ transpose(X_train) + 2 * epsilon * W
+for (e in 0->100) {
+    for (i in 0->2000) {
+        batch_start = i * batch_size
+        batch_end = batch_start + batch_size
 
-    W = W - lr * W_grad
-    M = M - lr * M_grad
-    b = b - lr * b_grad
-    c = c - lr * c_grad
+        x_ranges = x_ranges_base + (prev * batch_start) + (curr * batch_end)
+        y_ranges = y_ranges_base + (prev * batch_start) + (curr * batch_end)
+
+        X_batch = X_train[x_ranges]
+        y_batch = y_train[y_ranges]
+
+        ; Forward
+        u = W @ X_batch + b
+        h = relu(u)
+        v = M @ h + c
+        p = softmax(v)
+        L = cross_entropy(p, y_batch)
+        S = epsilon * sum(W^2) + epsilon * sum(M^2)
+        J = L + S
+
+        ; Backward
+        dv = (p - y_batch) / batch_size
+        c_grad = sum_cols(dv)
+        M_grad = dv @ transpose(h) + 2 * epsilon * M
+        dh = transpose(M) @ dv
+        du = dh * (u > 0)
+        b_grad = sum_cols(du)
+        W_grad = du @ transpose(X_batch) + 2 * epsilon * W
+
+        W = W - lr * W_grad
+        M = M - lr * M_grad
+        b = b - lr * b_grad
+        c = c - lr * c_grad
+    }
+    debug(J)
 }
-
-
-; final forward on the test set
 
 u = W @ X_test + b
 h = relu(u)
 v = M @ h + c
 p = softmax(v)
-
 L = cross_entropy(p, y_test)
 S = epsilon * sum(W^2) + epsilon * sum(M^2)
 J = L + S
-debug(sum(J) / 1000)
+debug(J)
