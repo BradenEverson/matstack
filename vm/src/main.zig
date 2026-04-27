@@ -21,7 +21,7 @@ pub fn main(init: std.process.Init) !void {
         var vm = try VirtualMachine.tryParse(alloc, bytecode);
         defer vm.deinit(alloc);
 
-        while (!(try vm.step(alloc))) {}
+        while (!(try vm.step(alloc, io))) {}
     } else {
         std.debug.print("Missing bytecode file!!!\n", .{});
         std.process.exit(1);

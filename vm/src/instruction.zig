@@ -59,6 +59,9 @@ pub const Command = enum(u8) {
     BRANCH_EQ,
     BRANCH_NE,
 
+    // Save to file, file name is a single character in the extra
+    SAVE,
+
     // Debug
     DEBUG_PRINT,
     HALT,

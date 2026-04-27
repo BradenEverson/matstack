@@ -93,6 +93,15 @@ pub const VmIR = struct {
                 try self.instructions.append(alloc, .{ .cmd = cmd });
             },
 
+            .save => |save| {
+                try self.evalExpr(io, alloc, save.on);
+
+                try self.instructions.append(alloc, .{
+                    .cmd = .SAVE,
+                    .extra = save.name,
+                });
+            },
+
             .load => |s| {
                 std.debug.print("{s}\n", .{s});
                 const bytes = try std.Io.Dir.cwd().readFileAlloc(io, s, alloc, .unlimited);
@@ -397,6 +406,7 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .cross_entropy => unreachable,
         .for_kw => unreachable,
         .in => unreachable,
+        .save => unreachable,
     };
 }
 

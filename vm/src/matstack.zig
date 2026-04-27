@@ -109,7 +109,7 @@ pub const VirtualMachine = struct {
         };
     }
 
-    pub fn step(vm: *VirtualMachine, alloc: Allocator) !bool {
+    pub fn step(vm: *VirtualMachine, alloc: Allocator, io: std.Io) !bool {
         if (vm.pc >= vm.instructions.len)
             return true;
 
@@ -340,6 +340,31 @@ pub const VirtualMachine = struct {
                 var top = try vm.stack.pop();
                 defer top.deinit(alloc);
                 std.debug.print("{any}\n", .{top});
+            },
+
+            .SAVE => {
+                var save = try vm.stack.pop();
+                defer save.deinit(alloc);
+
+                var bytes: std.ArrayList(u8) = .empty;
+                defer bytes.deinit(alloc);
+
+                try save.toBytes(alloc, &bytes);
+
+                const output = [1]u8{extra};
+
+                var file = try std.Io.Dir.cwd().createFile(io, &output, .{});
+                defer file.close(io);
+
+                var buffer: [1024]u8 = undefined;
+                var writer = file.writerStreaming(io, &buffer);
+
+                var write = &writer.interface;
+                for (bytes.items) |byte| {
+                    try write.writeByte(byte);
+                }
+
+                try writer.flush();
             },
 
             else => {

@@ -22,6 +22,7 @@ pub const Keyword = enum {
     for_kw,
     in,
     load,
+    save,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -39,6 +40,7 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "for", .for_kw },
     .{ "in", .in },
     .{ "load", .load },
+    .{ "save", .save },
 });
 
 pub const TokenTag = enum {

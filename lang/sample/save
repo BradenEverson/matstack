@@ -1,0 +1,4 @@
+W = rand(2, 3)
+save("W", W)
+
+debug(W)

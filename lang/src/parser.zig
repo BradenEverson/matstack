@@ -19,6 +19,7 @@ pub const Expr = union(enum) {
     literal: Literal,
     rand_tensor: std.ArrayList(usize),
     load: []const u8,
+    save: struct { name: u8, on: *const Expr },
     variable: []const u8,
     slice: struct { on: *const Expr, slice: *const Expr },
 };
@@ -370,6 +371,27 @@ pub const Parser = struct {
                         try self.consume(.close_paren);
 
                         return load_tensor;
+                    },
+                    .save => {
+                        const save_tensor = try self.arena.allocator().create(Expr);
+
+                        try self.consume(.open_paren);
+
+                        const name = self.tokens[self.cursor];
+                        try self.consume(.string);
+                        try self.consume(.comma);
+
+                        const on = try self.term();
+                        try self.consume(.close_paren);
+
+                        save_tensor.* = .{
+                            .save = .{
+                                .name = name.data[0],
+                                .on = on,
+                            },
+                        };
+
+                        return save_tensor;
                     },
                     .cross_entropy => {
                         try self.consume(.open_paren);
