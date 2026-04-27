@@ -15,4 +15,4 @@ zig build run -- sample/$NAME ../vm/sample/$NAME
 echo "Running..."
 
 cd ../vm
-zig build run -- sample/$NAME
+zig build run -Doptimize=ReleaseFast -- sample/$NAME
