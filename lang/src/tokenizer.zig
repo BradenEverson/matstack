@@ -54,6 +54,7 @@ pub const TokenTag = enum {
     star,
     slash,
     equals,
+    equals_equals,
     bang,
     newline,
     eof,
@@ -78,7 +79,6 @@ pub const TokenLookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ "@", .at },
     .{ "*", .star },
     .{ "/", .slash },
-    .{ "=", .equals },
     .{ "!", .bang },
     .{ "[", .open_bracket },
     .{ "(", .open_paren },
@@ -141,6 +141,23 @@ pub fn tokenize(stream: []const u8, tokens: *std.ArrayList(Token), alloc: std.me
                     .line = line,
                     .col = start_col,
                     .data = ident,
+                };
+            },
+
+            '=' => {
+                var tag: TokenTag = .equals;
+                if (idx < stream.len and stream[idx + 1] == '=') {
+                    idx += 1;
+                    tag = .equals_equals;
+                }
+
+                idx += 1;
+                col += 1;
+                curr = Token{
+                    .tag = tag,
+                    .line = line,
+                    .col = start_col,
+                    .data = stream[start_idx..idx],
                 };
             },
 

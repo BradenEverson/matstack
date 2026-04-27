@@ -414,6 +414,7 @@ fn opToCmd(op: parser.BinaryOp) matstack.Instruction.Command {
     return switch (op) {
         .gt => .GT,
         .lt => .LT,
+        .eq => .EQ,
         .add => .ADD,
         .div => .DIV,
         .matmul => .MATMUL,

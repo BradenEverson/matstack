@@ -32,6 +32,7 @@ pub const Literal = union(enum) {
 pub const BinaryOp = enum {
     gt,
     lt,
+    eq,
     add,
     sub,
     mul,
@@ -239,7 +240,7 @@ pub const Parser = struct {
     fn comparison(self: *Parser) AnyParserError!*const Expr {
         var left = try self.factor();
 
-        while (self.peek() == .gt or self.peek() == .lt) {
+        if (self.peek() == .gt or self.peek() == .lt or self.peek() == .equals_equals) {
             const op_token = self.tokens[self.cursor];
             self.advance();
             const right = try self.factor();
@@ -247,6 +248,7 @@ pub const Parser = struct {
             const op = switch (op_token.tag) {
                 .gt => BinaryOp.gt,
                 .lt => BinaryOp.lt,
+                .equals_equals => BinaryOp.eq,
                 else => unreachable,
             };
 
