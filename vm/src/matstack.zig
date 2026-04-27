@@ -10,10 +10,6 @@ pub const Command = Instruction.Command;
 
 pub const Operand = Tensor;
 
-/// How many tensor slots there are for
-/// working area memory
-pub const SCRATCH_SIZE: usize = 256;
-
 pub fn parseConstantPool(
     alloc: Allocator,
     tensor_count: usize,
@@ -42,19 +38,18 @@ pub const VirtualMachine = struct {
     instructions: []const Instruction,
     pc: usize = 0,
 
-    scratch_area: [SCRATCH_SIZE]Operand = undefined,
-    max_scratch_used: usize = 0,
+    scratch_area: std.AutoArrayHashMapUnmanaged(u8, Operand) = .empty,
 
     pub fn deinit(self: *VirtualMachine, alloc: Allocator) void {
         alloc.free(self.instructions);
         for (self.constant_pool) |*tensor| tensor.deinit(alloc);
         alloc.free(self.constant_pool);
-        while (self.stack.sp > 0) {
-            var tensor = self.stack.pop() catch unreachable;
-            tensor.deinit(alloc);
-        }
 
-        for (self.scratch_area[0 .. self.max_scratch_used + 1]) |*scratch| scratch.deinit(alloc);
+        self.stack.deinit(alloc);
+
+        const scratch = self.scratch_area.values();
+        for (scratch) |*s| s.deinit(alloc);
+        self.scratch_area.deinit(alloc);
     }
 
     pub fn tryParse(alloc: Allocator, bytes: []const u8) !VirtualMachine {
@@ -288,25 +283,27 @@ pub const VirtualMachine = struct {
                 var res = try vm.stack.pop();
                 defer res.deinit(alloc);
 
-                const idx = @as(usize, extra);
+                if (vm.scratch_area.getPtr(extra)) |val| {
+                    val.deinit(alloc);
+                    _ = vm.scratch_area.orderedRemove(extra);
+                }
 
-                // TODO: assumes compiler will sequentially walk the scratch area,
-                // if not UB will happen
-                if (idx > vm.max_scratch_used) vm.max_scratch_used = idx;
-
-                vm.scratch_area[idx] = try res.clone(alloc);
+                try vm.scratch_area.put(alloc, extra, try res.clone(alloc));
             },
 
             .CLONE_I => {
                 const res = try vm.stack.peek();
-                const idx = @as(usize, extra);
 
-                vm.scratch_area[idx] = try res.clone(alloc);
+                if (vm.scratch_area.getPtr(extra)) |val| {
+                    val.deinit(alloc);
+                    _ = vm.scratch_area.orderedRemove(extra);
+                }
+
+                try vm.scratch_area.put(alloc, extra, try res.clone(alloc));
             },
 
             .STORE_I => {
-                const idx = @as(usize, extra);
-                const res = try vm.scratch_area[idx].clone(alloc);
+                const res = try vm.scratch_area.getPtr(extra).?.clone(alloc);
 
                 try vm.stack.push(res);
             },
