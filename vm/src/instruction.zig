@@ -32,6 +32,8 @@ pub const Command = enum(u8) {
 
     ZEROS_LIKE,
 
+    // Element wise equality check (1 for true, 0 for false)
+    EQ,
     // Element wise greater than (1 for true, 0 for false)
     GT,
     // Element wise less than (1 for true, 0 for false)
@@ -40,6 +42,9 @@ pub const Command = enum(u8) {
     SUM_REDUCE,
     /// just does a plain ol' sum
     SUM,
+
+    /// Computes the argmax index along an index
+    ARGMAX,
 
     // Memory
     LOAD_CONST,

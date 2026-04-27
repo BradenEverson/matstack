@@ -135,6 +135,10 @@ fn f32Lt(a: f32, b: f32) f32 {
     return if (a < b) 1 else 0;
 }
 
+fn f32Eq(a: f32, b: f32) f32 {
+    return if (a == b) 1 else 0;
+}
+
 pub fn incInPlace(a: *Tensor) void {
     for (a.data) |*val| val.* += 1.0;
 }
@@ -145,7 +149,9 @@ pub fn gt(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
 pub fn lt(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Lt);
 }
-
+pub fn elemWiseEqual(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
+    return broadcastApply(&a, &b, alloc, f32Eq);
+}
 pub fn add(a: Tensor, b: Tensor, alloc: Allocator) !Tensor {
     return broadcastApply(&a, &b, alloc, f32Add);
 }
@@ -338,6 +344,66 @@ pub fn isZero(a: Tensor) bool {
     }
 
     return allZeros;
+}
+
+pub fn argmax(self: Tensor, alloc: Allocator, dim: usize) !Tensor {
+    if (dim >= self.shape.len)
+        return error.InvalidShapeForOp;
+
+    const out_len = self.shape.len - 1;
+    const out_shape = try alloc.alloc(usize, out_len);
+    defer alloc.free(out_shape);
+
+    var j: usize = 0;
+    for (0..self.shape.len) |i| {
+        if (i != dim) {
+            out_shape[j] = self.shape[i];
+            j += 1;
+        }
+    }
+
+    var result = try makeTensor(alloc, out_shape);
+    errdefer result.deinit(alloc);
+
+    const total_out = result.data.len;
+
+    var out_idx = try alloc.alloc(usize, out_len);
+    defer alloc.free(out_idx);
+    var src_idx = try alloc.alloc(usize, self.shape.len);
+    defer alloc.free(src_idx);
+
+    for (0..total_out) |flat_out| {
+        var rem = flat_out;
+        for (0..out_len) |i| {
+            out_idx[i] = rem / result.strides[i];
+            rem %= result.strides[i];
+        }
+
+        j = 0;
+        for (0..self.shape.len) |i| {
+            if (i == dim) {
+                src_idx[i] = 0;
+            } else {
+                src_idx[i] = out_idx[j];
+                j += 1;
+            }
+        }
+
+        var best_idx: usize = 0;
+        var best_val: f32 = -std.math.inf(f32);
+        for (0..self.shape[dim]) |k| {
+            src_idx[dim] = k;
+            const v = self.at(src_idx);
+            if (v > best_val) {
+                best_val = v;
+                best_idx = k;
+            }
+        }
+
+        result.data[flat_out] = @floatFromInt(best_idx);
+    }
+
+    return result;
 }
 
 pub fn sumAll(self: *const Tensor, alloc: Allocator) !Tensor {
@@ -882,4 +948,17 @@ test "slice col range" {
     const S = try A.sliceRanges(alloc, ranges);
     try std.testing.expectEqualSlices(usize, &[_]usize{ 3, 2 }, S.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 2, 3, 6, 7, 10, 11 }, S.data);
+}
+
+test "argmax" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    var A: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    A.setMany(&[_]f32{ 1, 5, 2, 4, 0, 3 });
+
+    const R = try A.argmax(alloc, 1);
+    try std.testing.expectEqualSlices(usize, &[_]usize{2}, R.shape);
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 0 }, R.data);
 }

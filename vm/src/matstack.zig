@@ -157,6 +157,16 @@ pub const VirtualMachine = struct {
                 try vm.stack.push(res);
             },
 
+            .EQ => {
+                var rhs = try vm.stack.pop();
+                defer rhs.deinit(alloc);
+                var lhs = try vm.stack.pop();
+                defer lhs.deinit(alloc);
+
+                const res = try lhs.elemWiseEqual(rhs, alloc);
+                try vm.stack.push(res);
+            },
+
             .ADD => {
                 var rhs = try vm.stack.pop();
                 defer rhs.deinit(alloc);
@@ -243,6 +253,14 @@ pub const VirtualMachine = struct {
                 defer on.deinit(alloc);
 
                 const res = try on.sumAll(alloc);
+                try vm.stack.push(res);
+            },
+
+            .ARGMAX => {
+                var on = try vm.stack.pop();
+                defer on.deinit(alloc);
+
+                const res = try on.argmax(alloc, @as(usize, extra));
                 try vm.stack.push(res);
             },
 
@@ -388,7 +406,7 @@ test "simple matmul" {
     A.setMany(&[_]f32{ 1, 2, 1, 0, 1, 0 });
     B.setMany(&[_]f32{ 2, 5, 6, 7, 1, 8 });
 
-    const constant_pool = &[_]Tensor{ A, B };
+    var constant_pool = [_]Tensor{ A, B };
     const instructions = &[_]Instruction{
         .{ .cmd = .LOAD_CONST, .extra = 0 }, // LOAD A
         .{ .cmd = .LOAD_CONST, .extra = 1 }, // LOAD B
@@ -396,11 +414,11 @@ test "simple matmul" {
     };
 
     var vm: VirtualMachine = .{
-        .constant_pool = constant_pool,
+        .constant_pool = &constant_pool,
         .instructions = instructions,
     };
 
-    while (!(try vm.step(arena.allocator()))) {}
+    while (!(try vm.step(arena.allocator(), std.testing.io))) {}
 
     const C = try vm.stack.pop();
 
@@ -446,7 +464,7 @@ test "parse an entire VM then execute" {
     };
 
     var vm = try VirtualMachine.tryParse(arena.allocator(), bytes);
-    while (!(try vm.step(arena.allocator()))) {}
+    while (!(try vm.step(arena.allocator(), std.testing.io))) {}
 
     const C = try vm.stack.pop();
 
