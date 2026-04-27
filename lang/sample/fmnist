@@ -37,8 +37,8 @@ y_ranges_base = [[0, 10],  [0, 0]]
 prev = [[0, 0], [1, 0]]
 curr = [[0, 0], [0, 1]]
 
-for (e in 0->1) {
-    for (i in 0->10) {
+for (e in 0->5) {
+    for (i in 0->100) {
         batch_start = i * batch_size
         batch_end = batch_start + batch_size
 

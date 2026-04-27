@@ -42,6 +42,7 @@ pub const VirtualMachine = struct {
 
     pub fn deinit(self: *VirtualMachine, alloc: Allocator) void {
         alloc.free(self.instructions);
+
         for (self.constant_pool) |*tensor| tensor.deinit(alloc);
         alloc.free(self.constant_pool);
 
@@ -246,7 +247,9 @@ pub const VirtualMachine = struct {
             },
 
             .SLICE => {
-                const slice_info = try vm.stack.pop();
+                var slice_info = try vm.stack.pop();
+                defer slice_info.deinit(alloc);
+
                 var slicing = try vm.stack.pop();
                 defer slicing.deinit(alloc);
 

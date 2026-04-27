@@ -20,6 +20,7 @@ pub fn main(init: std.process.Init) !void {
 
         var vm = try VirtualMachine.tryParse(alloc, bytecode);
         defer vm.deinit(alloc);
+
         while (!(try vm.step(alloc))) {}
     } else {
         std.debug.print("Missing bytecode file!!!\n", .{});
