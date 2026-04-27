@@ -397,6 +397,7 @@ fn keywordToCmd(op: tokenizer.Keyword) matstack.Instruction {
         .sum => .{ .cmd = .SUM },
         .transpose => .{ .cmd = .TRANSPOSE },
         .sum_cols => .{ .cmd = .SUM_REDUCE, .extra = 1 },
+        .argmax => .{ .cmd = .ARGMAX, .extra = 0 },
 
         // Handled at compile time
         .rand => unreachable,

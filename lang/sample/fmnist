@@ -71,7 +71,17 @@ for (e in 0->10) {
         b = b - lr * b_grad
         c = c - lr * c_grad
     }
-    debug(J)
+    ; debug(J)
+
+    ; print train accuracy
+    pred = argmax(p)
+    actual = argmax(y_batch)
+
+    cmp = pred == actual
+    ; debug(cmp)
+    acc = sum(cmp) / batch_size
+
+    debug(acc)
 }
 
 u = W @ X_test + b
@@ -81,7 +91,15 @@ p = softmax(v)
 L = cross_entropy(p, y_test)
 S = epsilon * sum(W^2) + epsilon * sum(M^2)
 J = L + S
-debug(J / 1000)
+; debug(J / 1000)
+
+pred = argmax(p)
+actual = argmax(y_test)
+
+cmp = pred == actual
+acc = sum(cmp) / 10000
+
+debug(acc)
 
 save("W", W)
 save("M", M)

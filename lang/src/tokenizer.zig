@@ -23,6 +23,7 @@ pub const Keyword = enum {
     in,
     load,
     save,
+    argmax,
 };
 
 pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
@@ -41,6 +42,7 @@ pub const KeywordLookup = std.StaticStringMap(Keyword).initComptime(.{
     .{ "in", .in },
     .{ "load", .load },
     .{ "save", .save },
+    .{ "argmax", .argmax },
 });
 
 pub const TokenTag = enum {
