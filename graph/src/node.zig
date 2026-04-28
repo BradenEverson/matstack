@@ -4,6 +4,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const Binary = @import("node/binary.zig");
+const Unary = @import("node/unary.zig");
+
 const Tensor = @import("matstack").Tensor;
 
 pub const NodeId = packed struct { idx: usize };
@@ -25,8 +28,8 @@ pub const NodeType = union(enum) {
 };
 
 pub const NodeOperation = union(enum) {
-    // binary_op: Binary,
-    // unary_op: Unary,
+    binary_op: Binary,
+    unary_op: Unary,
 };
 
 ty: NodeType,
