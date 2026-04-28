@@ -84,6 +84,7 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.addImport("matstack", vm_dep.module("matstack"));
+    mod.addImport("matstack", vm_dep.module("matstack"));
 
     // This declares intent for the executable to be installed into the
     // install prefix when running `zig build` (i.e. when executing the default

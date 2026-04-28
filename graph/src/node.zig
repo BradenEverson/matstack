@@ -4,7 +4,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const Tensor = @import("matstack").tensor;
+const Tensor = @import("matstack").Tensor;
 
 pub const NodeId = packed struct { idx: usize };
 
