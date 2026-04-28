@@ -9,8 +9,7 @@ const Tensor = @import("matstack").tensor.Tensor;
 pub const NodeId = packed struct { idx: usize };
 
 pub const NodeType = union(enum) {
-    // an input tensor, when compiled down, expects a certain index into
-    // the scratch area as argument registers
+    // an input tensor, will pop these inputs off of the stack
     input: usize,
     // A constant Tensor
     constant: Tensor,
