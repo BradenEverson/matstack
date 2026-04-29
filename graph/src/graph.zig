@@ -307,6 +307,20 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 try graph.accumulateGrad(alloc, l.b, db);
             },
 
+            .relu => |r| {
+                const x = graph.cache.get(r.x).?;
+
+                var zero: Tensor = try .makeTensor(alloc, &[_]usize{1});
+                zero.setMany(&[_]f32{0});
+                defer zero.deinit(alloc);
+
+                var x_mask = try x.gt(zero, alloc);
+                defer x_mask.deinit(alloc);
+
+                const dx = try grad.mul(x_mask, alloc);
+                try graph.accumulateGrad(alloc, r.x, dx);
+            },
+
             else => @panic("TODO\n"),
         },
         else => {},
@@ -619,4 +633,31 @@ test "Linear layer db" {
 
     const db = graph.grads.get(b).?;
     try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 2 }, db.data);
+}
+
+test "Linear relu dx" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const x = try graph.input(alloc);
+
+    const y = try graph.relu(alloc, x);
+
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    x_tensor.setMany(&[_]f32{ -10, 7 });
+    try graph.loadInput(alloc, x, x_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    var grad_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    grad_tensor.setMany(&[_]f32{ 5, -2 });
+    defer grad_tensor.deinit(alloc);
+
+    try graph.backwardOn(alloc, y, grad_tensor);
+
+    const dx = graph.grads.get(x).?;
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 0, -2 }, dx.data);
 }
