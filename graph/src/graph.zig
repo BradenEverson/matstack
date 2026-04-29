@@ -164,6 +164,28 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     const y = try Wx.add(b, alloc);
                     return y;
                 },
+
+                .regularization => |r| {
+                    var W = try graph.eval(alloc, r.W);
+                    defer W.deinit(alloc);
+
+                    var two: Tensor = try .makeTensor(alloc, &[_]usize{1});
+                    two.setMany(&[_]f32{2});
+                    defer two.deinit(alloc);
+
+                    var eps: Tensor = try .makeTensor(alloc, &[_]usize{1});
+                    eps.setMany(&[_]f32{r.epsilon});
+                    defer eps.deinit(alloc);
+
+                    var W_square = try W.pow(two, alloc);
+                    defer W_square.deinit(alloc);
+
+                    var norm = try W_square.sumAll(alloc);
+                    defer norm.deinit(alloc);
+
+                    return try norm.mul(eps, alloc);
+                },
+
                 else => @panic("TODO\n"),
             }
         },
@@ -214,4 +236,26 @@ test "Linear forward" {
 
     try std.testing.expectEqualSlices(usize, &[_]usize{ 3, 1 }, res.shape);
     try std.testing.expectEqualSlices(f32, &[_]f32{ 40, 43, 15 }, res.data);
+}
+
+test "Regularization" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const W = try graph.input(alloc);
+
+    const y = try graph.regularization(alloc, W, 0.1);
+
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+
+    W_tensor.setMany(&[_]f32{ 2, 4, 5, 10, 0, -2 });
+
+    graph.loadInput(0, W_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    try std.testing.expectApproxEqAbs(14.9, res.data[0], 1e-4);
 }
