@@ -229,7 +229,20 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
     }
 }
 
+pub fn backwardEval(graph: *Graph, alloc: Allocator, node: NodeId, wrt: NodeId) !Tensor {
+    _ = graph;
+    _ = alloc;
+    _ = node;
+    _ = wrt;
+}
+
 pub fn compile(graph: *Graph, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
+    _ = graph;
+    _ = alloc;
+    _ = instr;
+}
+
+pub fn backwardCompile(graph: *Graph, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
     _ = graph;
     _ = alloc;
     _ = instr;
