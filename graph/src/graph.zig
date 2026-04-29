@@ -45,7 +45,7 @@ fn accumulateGrad(graph: *Graph, alloc: Allocator, idx: NodeId, grad: Tensor) !v
         existing.deinit(alloc);
         existing.* = summed;
     } else {
-        try graph.grads.put(alloc, idx, grad);
+        try graph.grads.put(alloc, idx, try grad.clone(alloc));
     }
 }
 
@@ -269,16 +269,16 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
     }
 }
 
-pub fn backward(graph: *Graph, alloc: Allocator, loss: NodeId) !Tensor {
+pub fn backward(graph: *Graph, alloc: Allocator, loss: NodeId) !void {
     var seed = try Tensor.makeTensor(alloc, &[_]usize{1});
     seed.setMany(&[_]f32{1.0});
-    try graph.gradients.put(loss, seed);
+    try graph.grads.put(alloc, loss, seed);
 
     var i = graph.nodes.items.len;
     while (i > 0) {
         i -= 1;
         const node = NodeId{ .idx = i };
-        const grad_out = graph.gradients.get(node).?;
+        const grad_out = graph.grads.get(node).?;
 
         try graph.backwardOn(alloc, node, grad_out);
     }
@@ -298,9 +298,14 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 var W_t = try W.transposeMat(alloc);
                 defer W_t.deinit(alloc);
 
-                const dW = try grad.matmul(x_t, alloc);
-                const dx = try W_t.matmul(grad, alloc);
-                const db = try grad.clone(alloc);
+                var dW = try grad.matmul(x_t, alloc);
+                defer dW.deinit(alloc);
+
+                var dx = try W_t.matmul(grad, alloc);
+                defer dx.deinit(alloc);
+
+                var db = try grad.clone(alloc);
+                defer db.deinit(alloc);
 
                 try graph.accumulateGrad(alloc, l.W, dW);
                 try graph.accumulateGrad(alloc, l.x, dx);
@@ -317,13 +322,18 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 var x_mask = try x.gt(zero, alloc);
                 defer x_mask.deinit(alloc);
 
-                const dx = try grad.mul(x_mask, alloc);
+                var dx = try grad.mul(x_mask, alloc);
+                defer dx.deinit(alloc);
+
                 try graph.accumulateGrad(alloc, r.x, dx);
             },
 
             .add => |a| {
-                const da = try grad.clone(alloc);
-                const db = try grad.clone(alloc);
+                var da = try grad.clone(alloc);
+                defer da.deinit(alloc);
+
+                var db = try grad.clone(alloc);
+                defer db.deinit(alloc);
 
                 try graph.accumulateGrad(alloc, a.A, da);
                 try graph.accumulateGrad(alloc, a.B, db);
@@ -339,8 +349,11 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 var y_sub_v = try v.sub(y, alloc);
                 defer y_sub_v.deinit(alloc);
 
-                const dy = try grad.mul(y_sub_v, alloc);
-                const dv = try grad.mul(v_sub_y, alloc);
+                var dy = try grad.mul(y_sub_v, alloc);
+                defer dy.deinit(alloc);
+
+                var dv = try grad.mul(v_sub_y, alloc);
+                defer dv.deinit(alloc);
 
                 try graph.accumulateGrad(alloc, m.v, dv);
                 try graph.accumulateGrad(alloc, m.y, dy);
@@ -356,7 +369,8 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 var two_eps_grad = try two_eps.mul(grad, alloc);
                 defer two_eps_grad.deinit(alloc);
 
-                const dW = try W.mul(two_eps_grad, alloc);
+                var dW = try W.mul(two_eps_grad, alloc);
+                defer dW.deinit(alloc);
 
                 try graph.accumulateGrad(alloc, r.W, dW);
             },
@@ -700,4 +714,62 @@ test "Linear relu dx" {
 
     const dx = graph.grads.get(x).?;
     try std.testing.expectEqualSlices(f32, &[_]f32{ 0, -2 }, dx.data);
+}
+
+test "backward pass" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const x = try graph.input(alloc);
+    const y = try graph.input(alloc);
+
+    const W = try graph.input(alloc);
+    const M = try graph.input(alloc);
+    const b = try graph.input(alloc);
+    const c = try graph.input(alloc);
+
+    const u = try graph.linear(alloc, W, x, b);
+    const h = try graph.relu(alloc, u);
+
+    const v = try graph.linear(alloc, M, h, c);
+    const L = try graph.mse(alloc, v, y);
+
+    const S1 = try graph.regularization(alloc, W, 0.01);
+    const S2 = try graph.regularization(alloc, M, 0.01);
+
+    const S = try graph.add(alloc, S1, S2);
+    const J = try graph.add(alloc, L, S);
+
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    x_tensor.setMany(&[_]f32{ -10, 1 });
+    try graph.loadInput(alloc, x, x_tensor);
+
+    var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    y_tensor.setMany(&[_]f32{ 10, 5 });
+    try graph.loadInput(alloc, y, y_tensor);
+
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 2 });
+    W_tensor.setMany(&[_]f32{ 1, 0, 0, 1, 0, 0 });
+    try graph.loadInput(alloc, W, W_tensor);
+
+    var M_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    M_tensor.setMany(&[_]f32{ 0, -1, 2, 1, 3, -5 });
+    try graph.loadInput(alloc, M, M_tensor);
+
+    var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
+    b_tensor.setMany(&[_]f32{ 1, 2, 3 });
+    try graph.loadInput(alloc, b, b_tensor);
+
+    var c_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    c_tensor.setMany(&[_]f32{ -10, 10 });
+    try graph.loadInput(alloc, c, c_tensor);
+
+    var res = try graph.eval(alloc, J);
+    defer res.deinit(alloc);
+
+    try std.testing.expectApproxEqAbs(res.data[0], 145.42, 1e-4);
+
+    try graph.backward(alloc, J);
 }
