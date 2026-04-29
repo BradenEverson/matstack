@@ -49,7 +49,7 @@ fn accumulateGrad(graph: *Graph, alloc: Allocator, idx: NodeId, grad: Tensor) !v
     }
 }
 
-fn zeroGrad(graph: *Graph, idx: NodeId) void {
+pub fn zeroGrad(graph: *Graph, idx: NodeId) void {
     graph.grads.remove(idx);
 }
 
