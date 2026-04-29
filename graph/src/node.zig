@@ -34,7 +34,6 @@ pub const NodeOperation = union(enum) {
     cross_entropy: struct { v: NodeId, y: NodeId },
     mse: struct { v: NodeId, y: NodeId },
 
-    sum: struct { W: NodeId },
     relu: struct { x: NodeId },
     transpose: struct { X: NodeId },
     softmax: struct { x: NodeId },

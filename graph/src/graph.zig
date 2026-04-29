@@ -72,16 +72,6 @@ pub fn relu(graph: *Graph, alloc: Allocator, x: NodeId) !NodeId {
     });
 }
 
-pub fn sum(graph: *Graph, alloc: Allocator, x: NodeId) !NodeId {
-    const node_type: NodeType = .{ .operation = .{
-        .sum = .{ .x = x },
-    } };
-
-    return try graph.insert(alloc, .{
-        .ty = node_type,
-    });
-}
-
 pub fn add(graph: *Graph, alloc: Allocator, A: NodeId, B: NodeId) !NodeId {
     const node_type: NodeType = .{ .operation = .{
         .add = .{ .A = A, .B = B },
@@ -186,6 +176,24 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     return try norm.mul(eps, alloc);
                 },
 
+                .add => |a| {
+                    var A = try graph.eval(alloc, a.A);
+
+                    var B = try graph.eval(alloc, a.B);
+                    defer B.deinit(alloc);
+
+                    try A.addInPlace(B);
+
+                    return A;
+                },
+
+                .relu => |r| {
+                    var x = try graph.eval(alloc, r.x);
+                    defer x.deinit(alloc);
+
+                    return try x.relu(alloc);
+                },
+
                 else => @panic("TODO\n"),
             }
         },
@@ -258,4 +266,51 @@ test "Regularization" {
     defer res.deinit(alloc);
 
     try std.testing.expectApproxEqAbs(14.9, res.data[0], 1e-4);
+}
+
+test "Add" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const a = try graph.input(alloc);
+    const b = try graph.input(alloc);
+
+    const y = try graph.add(alloc, a, b);
+
+    var a_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+
+    a_tensor.setMany(&[_]f32{ 3, 5 });
+    b_tensor.setMany(&[_]f32{ 1, 2 });
+
+    graph.loadInput(0, a_tensor);
+    graph.loadInput(1, b_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 4, 7 }, res.data);
+}
+
+test "ReLU" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const x = try graph.input(alloc);
+
+    const y = try graph.relu(alloc, x);
+
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    x_tensor.setMany(&[_]f32{ -1, 5, 9, 0, -20, 3 });
+
+    graph.loadInput(0, x_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 0, 5, 9, 0, 0, 3 }, res.data);
 }
