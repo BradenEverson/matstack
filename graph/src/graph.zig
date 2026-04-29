@@ -194,6 +194,30 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     return try x.relu(alloc);
                 },
 
+                .mse => |m| {
+                    var v = try graph.eval(alloc, m.v);
+                    defer v.deinit(alloc);
+
+                    var y = try graph.eval(alloc, m.y);
+                    defer y.deinit(alloc);
+
+                    var diff = try y.sub(v, alloc);
+                    defer diff.deinit(alloc);
+
+                    var two: Tensor = try .makeTensor(alloc, &[_]usize{1});
+                    two.setMany(&[_]f32{2});
+                    defer two.deinit(alloc);
+
+                    var square = try diff.pow(two, alloc);
+                    defer square.deinit(alloc);
+
+                    // TODO: This will not work on batches
+                    var sum = try square.sumAll(alloc);
+                    defer sum.deinit(alloc);
+
+                    return try sum.div(two, alloc);
+                },
+
                 else => @panic("TODO\n"),
             }
         },
@@ -313,4 +337,30 @@ test "ReLU" {
     defer res.deinit(alloc);
 
     try std.testing.expectEqualSlices(f32, &[_]f32{ 0, 5, 9, 0, 0, 3 }, res.data);
+}
+
+test "mse" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const y = try graph.input(alloc);
+    const v = try graph.input(alloc);
+
+    const L = try graph.mse(alloc, v, y);
+
+    var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    y_tensor.setMany(&[_]f32{ 10, 5 });
+
+    var v_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    v_tensor.setMany(&[_]f32{ -7, 4 });
+
+    graph.loadInput(0, y_tensor);
+    graph.loadInput(1, v_tensor);
+
+    var res = try graph.eval(alloc, L);
+    defer res.deinit(alloc);
+
+    try std.testing.expectApproxEqAbs(res.data[0], 145, 1e-4);
 }
