@@ -47,14 +47,3 @@ const Self = @This();
 pub fn deinit(self: *Self, alloc: Allocator) void {
     self.ty.deinit(alloc);
 }
-
-pub fn eval(self: *Self, alloc: Allocator) !Tensor {
-    _ = self;
-    _ = alloc;
-}
-
-pub fn compile(self: *Self, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
-    _ = self;
-    _ = alloc;
-    _ = instr;
-}
