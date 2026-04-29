@@ -39,13 +39,13 @@ pub fn deinit(graph: *Graph, alloc: Allocator) void {
 }
 
 fn accumulateGrad(graph: *Graph, alloc: Allocator, idx: NodeId, grad: Tensor) !void {
-    if (graph.gradients.getPtr(idx)) |existing| {
-        const summed = try existing.add(grad, alloc);
-        grad.deinit(alloc);
+    if (graph.grads.getPtr(idx)) |existing| {
+        const summed = try existing.*.add(grad, alloc);
+
         existing.deinit(alloc);
         existing.* = summed;
     } else {
-        try graph.gradients.put(idx, grad);
+        try graph.grads.put(alloc, idx, grad);
     }
 }
 
@@ -53,8 +53,11 @@ fn zeroGrad(graph: *Graph, idx: NodeId) void {
     graph.grads.remove(idx);
 }
 
-pub fn loadInput(graph: *Graph, idx: usize, val: Tensor) void {
-    graph.inputs.items[idx] = val;
+pub fn loadInput(graph: *Graph, alloc: Allocator, in: NodeId, val: Tensor) !void {
+    const node = graph.nodes.items[in.idx];
+    graph.inputs.items[node.ty.input] = val;
+    const clone = try val.clone(alloc);
+    try graph.cache.put(alloc, in, clone);
 }
 
 fn insert(graph: *Graph, alloc: Allocator, node: Node) !NodeId {
@@ -274,30 +277,39 @@ pub fn backward(graph: *Graph, alloc: Allocator, loss: NodeId) !Tensor {
     var i = graph.nodes.items.len;
     while (i > 0) {
         i -= 1;
-        const node = graph.nodes.items[i];
-        const grad_out = graph.gradients.get(NodeId{ .idx = i }).?;
+        const node = NodeId{ .idx = i };
+        const grad_out = graph.gradients.get(node).?;
 
         try graph.backwardOn(alloc, node, grad_out);
     }
 }
 
-pub fn backwardOn(graph: *Graph, alloc: Allocator, node: Node, grad: Tensor) !void {
+pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor) !void {
+    const node = graph.nodes.items[node_id.idx];
     switch (node.ty) {
-        .linear => |l| {
-            const W = graph.cached_outputs.get(l.W).?;
-            const x = graph.cached_outputs.get(l.x).?;
+        .operation => |o| switch (o) {
+            .linear => |l| {
+                const W = graph.cache.get(l.W).?;
+                const x = graph.cache.get(l.x).?;
 
-            var x_transpose = try x.transpose(alloc);
-            defer x_transpose.deinit(alloc);
+                var x_t = try x.transposeMat(alloc);
+                defer x_t.deinit(alloc);
 
-            const dW = try grad.matmul(x_transpose, alloc);
-            const dx = try W.transpose(alloc).matmul(grad, alloc);
-            const db = try grad.clone(alloc);
+                var W_t = try W.transposeMat(alloc);
+                defer W_t.deinit(alloc);
 
-            try graph.accumulateGrad(alloc, l.W, dW);
-            try graph.accumulateGrad(alloc, l.x, dx);
-            try graph.accumulateGrad(alloc, l.b, db);
+                const dW = try grad.matmul(x_t, alloc);
+                const dx = try W_t.matmul(grad, alloc);
+                const db = try grad.clone(alloc);
+
+                try graph.accumulateGrad(alloc, l.W, dW);
+                try graph.accumulateGrad(alloc, l.x, dx);
+                try graph.accumulateGrad(alloc, l.b, db);
+            },
+
+            else => @panic("TODO\n"),
         },
+        else => {},
     }
 }
 
@@ -336,9 +348,9 @@ test "Linear forward" {
     x_tensor.setMany(&[_]f32{ 0, 5, 2 });
     b_tensor.setMany(&[_]f32{ 1, 0, 1 });
 
-    graph.loadInput(0, W_tensor);
-    graph.loadInput(1, x_tensor);
-    graph.loadInput(2, b_tensor);
+    try graph.loadInput(alloc, W, W_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
 
     var res = try graph.eval(alloc, y);
     defer res.deinit(alloc);
@@ -361,7 +373,7 @@ test "Regularization" {
 
     W_tensor.setMany(&[_]f32{ 2, 4, 5, 10, 0, -2 });
 
-    graph.loadInput(0, W_tensor);
+    try graph.loadInput(alloc, W, W_tensor);
 
     var res = try graph.eval(alloc, y);
     defer res.deinit(alloc);
@@ -386,8 +398,8 @@ test "Add" {
     a_tensor.setMany(&[_]f32{ 3, 5 });
     b_tensor.setMany(&[_]f32{ 1, 2 });
 
-    graph.loadInput(0, a_tensor);
-    graph.loadInput(1, b_tensor);
+    try graph.loadInput(alloc, a, a_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
 
     var res = try graph.eval(alloc, y);
     defer res.deinit(alloc);
@@ -408,7 +420,7 @@ test "ReLU" {
     var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
     x_tensor.setMany(&[_]f32{ -1, 5, 9, 0, -20, 3 });
 
-    graph.loadInput(0, x_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
 
     var res = try graph.eval(alloc, y);
     defer res.deinit(alloc);
@@ -433,8 +445,8 @@ test "mse" {
     var v_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
     v_tensor.setMany(&[_]f32{ -7, 4 });
 
-    graph.loadInput(0, y_tensor);
-    graph.loadInput(1, v_tensor);
+    try graph.loadInput(alloc, y, y_tensor);
+    try graph.loadInput(alloc, v, v_tensor);
 
     var res = try graph.eval(alloc, L);
     defer res.deinit(alloc);
@@ -470,30 +482,141 @@ test "forward pass" {
 
     var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
     x_tensor.setMany(&[_]f32{ -10, 1 });
-    graph.loadInput(0, x_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
 
     var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
     y_tensor.setMany(&[_]f32{ 10, 5 });
-    graph.loadInput(1, y_tensor);
+    try graph.loadInput(alloc, y, y_tensor);
 
     var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 2 });
     W_tensor.setMany(&[_]f32{ 1, 0, 0, 1, 0, 0 });
-    graph.loadInput(2, W_tensor);
+    try graph.loadInput(alloc, W, W_tensor);
 
     var M_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
     M_tensor.setMany(&[_]f32{ 0, -1, 2, 1, 3, -5 });
-    graph.loadInput(3, M_tensor);
+    try graph.loadInput(alloc, M, M_tensor);
 
     var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
     b_tensor.setMany(&[_]f32{ 1, 2, 3 });
-    graph.loadInput(4, b_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
 
     var c_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
     c_tensor.setMany(&[_]f32{ -10, 10 });
-    graph.loadInput(5, c_tensor);
+    try graph.loadInput(alloc, c, c_tensor);
 
     var res = try graph.eval(alloc, J);
     defer res.deinit(alloc);
 
     try std.testing.expectApproxEqAbs(res.data[0], 145.42, 1e-4);
+}
+
+test "Linear layer dW" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const W = try graph.input(alloc);
+    const x = try graph.input(alloc);
+    const b = try graph.input(alloc);
+
+    const y = try graph.linear(alloc, W, x, b);
+
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
+    var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+
+    W_tensor.setMany(&[_]f32{ 0, 0, 0, 0, 0, 0 });
+    x_tensor.setMany(&[_]f32{ 5, 0, 7 });
+    b_tensor.setMany(&[_]f32{ 1, 0 });
+
+    try graph.loadInput(alloc, W, W_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    var grad_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    grad_tensor.setMany(&[_]f32{ 0, 1.5 });
+    defer grad_tensor.deinit(alloc);
+
+    try graph.backwardOn(alloc, y, grad_tensor);
+
+    const dW = graph.grads.get(W).?;
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 0, 0, 0, 7.5, 0, 10.5 }, dW.data);
+}
+
+test "Linear layer dx" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const W = try graph.input(alloc);
+    const x = try graph.input(alloc);
+    const b = try graph.input(alloc);
+
+    const y = try graph.linear(alloc, W, x, b);
+
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
+    var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+
+    W_tensor.setMany(&[_]f32{ -1, 3, 2, 5, 0, 0.1 });
+    x_tensor.setMany(&[_]f32{ 0, 0, 0 });
+    b_tensor.setMany(&[_]f32{ 0, 0 });
+
+    try graph.loadInput(alloc, W, W_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    var grad_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    grad_tensor.setMany(&[_]f32{ 0.5, -1 });
+    defer grad_tensor.deinit(alloc);
+
+    try graph.backwardOn(alloc, y, grad_tensor);
+
+    const dx = graph.grads.get(x).?;
+    try std.testing.expectEqualSlices(f32, &[_]f32{ -5.5, 1.5, 0.9 }, dx.data);
+}
+
+test "Linear layer db" {
+    const alloc = std.testing.allocator;
+
+    var graph = Graph{};
+    defer graph.deinit(alloc);
+
+    const W = try graph.input(alloc);
+    const x = try graph.input(alloc);
+    const b = try graph.input(alloc);
+
+    const y = try graph.linear(alloc, W, x, b);
+
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
+    var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+
+    W_tensor.setMany(&[_]f32{ -1, 3, 2, 5, 0, 0.1 });
+    x_tensor.setMany(&[_]f32{ 0, 0, 0 });
+    b_tensor.setMany(&[_]f32{ 0, 0 });
+
+    try graph.loadInput(alloc, W, W_tensor);
+    try graph.loadInput(alloc, x, x_tensor);
+    try graph.loadInput(alloc, b, b_tensor);
+
+    var res = try graph.eval(alloc, y);
+    defer res.deinit(alloc);
+
+    var grad_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    grad_tensor.setMany(&[_]f32{ 1, 2 });
+    defer grad_tensor.deinit(alloc);
+
+    try graph.backwardOn(alloc, y, grad_tensor);
+
+    const db = graph.grads.get(b).?;
+    try std.testing.expectEqualSlices(f32, &[_]f32{ 1, 2 }, db.data);
 }
