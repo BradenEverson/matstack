@@ -321,9 +321,49 @@ pub fn backwardOn(graph: *Graph, alloc: Allocator, node_id: NodeId, grad: Tensor
                 try graph.accumulateGrad(alloc, r.x, dx);
             },
 
+            .add => |a| {
+                const da = try grad.clone(alloc);
+                const db = try grad.clone(alloc);
+
+                try graph.accumulateGrad(alloc, a.A, da);
+                try graph.accumulateGrad(alloc, a.B, db);
+            },
+
+            .mse => |m| {
+                const v = graph.cache.get(m.v).?;
+                const y = graph.cache.get(m.y).?;
+
+                var v_sub_y = try v.sub(y, alloc);
+                defer v_sub_y.deinit(alloc);
+
+                var y_sub_v = try v.sub(y, alloc);
+                defer y_sub_v.deinit(alloc);
+
+                const dy = try grad.mul(y_sub_v, alloc);
+                const dv = try grad.mul(v_sub_y, alloc);
+
+                try graph.accumulateGrad(alloc, m.v, dv);
+                try graph.accumulateGrad(alloc, m.y, dy);
+            },
+
+            .regularization => |r| {
+                const W = graph.cache.get(r.W).?;
+
+                var two_eps: Tensor = try .makeTensor(alloc, &[_]usize{1});
+                two_eps.setMany(&[_]f32{2 * r.epsilon});
+                defer two_eps.deinit(alloc);
+
+                var two_eps_grad = try two_eps.mul(grad, alloc);
+                defer two_eps_grad.deinit(alloc);
+
+                const dW = try W.mul(two_eps_grad, alloc);
+
+                try graph.accumulateGrad(alloc, r.W, dW);
+            },
+
             else => @panic("TODO\n"),
         },
-        else => {},
+        else => {}, // constants and inputs will already have had their grads accumulated to them :)
     }
 }
 
