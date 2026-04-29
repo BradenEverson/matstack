@@ -217,6 +217,13 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     return try sum.div(two, alloc);
                 },
 
+                .transpose => |t| {
+                    var x = try graph.eval(alloc, t.X);
+                    x.transposeMatInPlace();
+
+                    return x;
+                },
+
                 else => @panic("TODO\n"),
             }
         },
