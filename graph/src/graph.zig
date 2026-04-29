@@ -63,6 +63,16 @@ pub fn linear(
     });
 }
 
+pub fn relu(graph: *Graph, alloc: Allocator, x: NodeId) !NodeId {
+    const node_type: NodeType = .{ .operation = .{
+        .relu = .{ .x = x },
+    } };
+
+    return try graph.nodes.append(alloc, .{
+        .ty = .{ .operation = node_type },
+    });
+}
+
 test {
     _ = @import("node.zig");
 }

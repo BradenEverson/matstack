@@ -26,8 +26,16 @@ pub const NodeType = union(enum) {
 
 pub const NodeOperation = union(enum) {
     linear: struct { W: NodeId, x: NodeId, b: NodeId },
-    sum: struct { W: NodeId },
+
     add: struct { A: NodeId, B: NodeId },
+    regularization: struct { epsilon: f32, W: NodeId },
+    cross_entropy: struct { v: NodeId, y: NodeId },
+    mse: struct { v: NodeId, y: NodeId },
+
+    sum: struct { W: NodeId },
+    relu: struct { x: NodeId },
+    transpose: struct { X: NodeId },
+    softmax: struct { x: NodeId },
 };
 
 ty: NodeType,
