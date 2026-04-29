@@ -423,27 +423,37 @@ pub fn sumReduce(self: *const Tensor, alloc: Allocator, axis: usize) !Tensor {
     out_shape[axis] = 1;
 
     var result = try makeTensor(alloc, out_shape);
-
     @memset(result.data, 0);
+
+    const ndims = self.shape.len;
+    var logical_strides = try alloc.alloc(usize, ndims);
+    defer alloc.free(logical_strides);
+    logical_strides[ndims - 1] = 1;
+    if (ndims > 1) {
+        var i = ndims - 1;
+        while (i > 0) {
+            i -= 1;
+            logical_strides[i] = logical_strides[i + 1] * self.shape[i + 1];
+        }
+    }
 
     var total: usize = 1;
     for (self.shape) |s| total *= s;
 
-    var idx = try alloc.alloc(usize, self.shape.len);
-    defer alloc.free(idx);
-    @memset(idx, 0);
+    var in_idx = try alloc.alloc(usize, ndims);
+    defer alloc.free(in_idx);
+    var out_idx = try alloc.alloc(usize, ndims);
+    defer alloc.free(out_idx);
 
     for (0..total) |flat_in| {
         var rem = flat_in;
-        for (0..self.shape.len) |i| {
-            idx[i] = rem / self.strides[i];
-            rem %= self.strides[i];
+        for (0..ndims) |i| {
+            in_idx[i] = rem / logical_strides[i];
+            rem %= logical_strides[i];
         }
-
-        const saved = idx[axis];
-        idx[axis] = 0;
-        result.atMut(idx).* += self.at(idx);
-        idx[axis] = saved;
+        @memcpy(out_idx, in_idx);
+        out_idx[axis] = 0;
+        result.atMut(out_idx).* += self.at(in_idx);
     }
 
     return result;

@@ -211,8 +211,7 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     var square = try diff.pow(two, alloc);
                     defer square.deinit(alloc);
 
-                    // TODO: This will not work on batches
-                    var sum = try square.sumAll(alloc);
+                    var sum = try square.sumReduce(alloc, 0);
                     defer sum.deinit(alloc);
 
                     return try sum.div(two, alloc);
