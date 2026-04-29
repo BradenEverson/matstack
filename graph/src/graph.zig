@@ -1,4 +1,6 @@
 //! The core computation graph architecture
+//!
+//! pub fn output()
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -40,6 +42,18 @@ pub fn input(graph: *Graph, alloc: Allocator) !NodeId {
     const node = Node{ .ty = .{ .input = input_id } };
 
     return try graph.nodes.append(alloc, node);
+}
+
+pub fn output(graph: *Graph, alloc: Allocator, n: NodeId) !void {
+    try graph.outputs.append(alloc, n);
+}
+
+pub fn linear(graph: *Graph, alloc: Allocator, W: NodeId, x: NodeId, b: NodeId) !NodeId {
+    _ = graph;
+    _ = alloc;
+    _ = W;
+    _ = x;
+    _ = b;
 }
 
 test {
