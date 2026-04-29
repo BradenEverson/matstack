@@ -4,6 +4,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const Instruction = @import("matstack").Instruction;
+
 const Tensor = @import("matstack").Tensor;
 
 pub const NodeId = packed struct { idx: usize };
@@ -44,4 +46,15 @@ const Self = @This();
 
 pub fn deinit(self: *Self, alloc: Allocator) void {
     self.ty.deinit(alloc);
+}
+
+pub fn eval(self: *Self, alloc: Allocator) !Tensor {
+    _ = self;
+    _ = alloc;
+}
+
+pub fn compile(self: *Self, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
+    _ = self;
+    _ = alloc;
+    _ = instr;
 }
