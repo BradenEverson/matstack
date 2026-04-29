@@ -13,6 +13,9 @@ const NodeType = Node.NodeType;
 nodes: std.ArrayList(Node) = .empty,
 inputs: std.ArrayList(Tensor) = .empty,
 
+grads: std.AutoHashMapUnmanaged(NodeId, Tensor) = .empty,
+cache: std.AutoHashMapUnmanaged(NodeId, Tensor) = .empty,
+
 const Graph = @This();
 
 pub fn deinit(graph: *Graph, alloc: Allocator) void {
@@ -25,6 +28,29 @@ pub fn deinit(graph: *Graph, alloc: Allocator) void {
         in.deinit(alloc);
     }
     graph.inputs.deinit(alloc);
+
+    var grads = graph.grads.valueIterator();
+    while (grads.next()) |g| g.deinit(alloc);
+    graph.grads.deinit(alloc);
+
+    var cache = graph.cache.valueIterator();
+    while (cache.next()) |c| c.deinit(alloc);
+    graph.cache.deinit(alloc);
+}
+
+fn accumulateGrad(graph: *Graph, alloc: Allocator, idx: NodeId, grad: Tensor) !void {
+    if (graph.gradients.getPtr(idx)) |existing| {
+        const summed = try existing.add(grad, alloc);
+        grad.deinit(alloc);
+        existing.deinit(alloc);
+        existing.* = summed;
+    } else {
+        try graph.gradients.put(idx, grad);
+    }
+}
+
+fn zeroGrad(graph: *Graph, idx: NodeId) void {
+    graph.grads.remove(idx);
 }
 
 pub fn loadInput(graph: *Graph, idx: usize, val: Tensor) void {
@@ -152,6 +178,8 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     defer Wx.deinit(alloc);
 
                     const y = try Wx.add(b, alloc);
+                    try graph.cache.put(alloc, node, try y.clone(alloc));
+
                     return y;
                 },
 
@@ -173,7 +201,9 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     var norm = try W_square.sumAll(alloc);
                     defer norm.deinit(alloc);
 
-                    return try norm.mul(eps, alloc);
+                    const res = try norm.mul(eps, alloc);
+                    try graph.cache.put(alloc, node, try res.clone(alloc));
+                    return res;
                 },
 
                 .add => |a| {
@@ -183,14 +213,18 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     var B = try graph.eval(alloc, a.B);
                     defer B.deinit(alloc);
 
-                    return try A.add(B, alloc);
+                    const res = try A.add(B, alloc);
+                    try graph.cache.put(alloc, node, try res.clone(alloc));
+                    return res;
                 },
 
                 .relu => |r| {
                     var x = try graph.eval(alloc, r.x);
                     defer x.deinit(alloc);
 
-                    return try x.relu(alloc);
+                    const res = try x.relu(alloc);
+                    try graph.cache.put(alloc, node, try res.clone(alloc));
+                    return res;
                 },
 
                 .mse => |m| {
@@ -213,13 +247,16 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
                     var sum = try square.sumReduce(alloc, 0);
                     defer sum.deinit(alloc);
 
-                    return try sum.div(two, alloc);
+                    const res = try sum.div(two, alloc);
+                    try graph.cache.put(alloc, node, try res.clone(alloc));
+                    return res;
                 },
 
                 .transpose => |t| {
                     var x = try graph.eval(alloc, t.X);
                     try x.transposeMatInPlace();
 
+                    try graph.cache.put(alloc, node, try x.clone(alloc));
                     return x;
                 },
 
@@ -229,20 +266,42 @@ pub fn eval(graph: *Graph, alloc: Allocator, node: NodeId) !Tensor {
     }
 }
 
-pub fn backwardEval(graph: *Graph, alloc: Allocator, node: NodeId, wrt: NodeId) !Tensor {
-    _ = graph;
-    _ = alloc;
-    _ = node;
-    _ = wrt;
+pub fn backward(graph: *Graph, alloc: Allocator, loss: NodeId) !Tensor {
+    var seed = try Tensor.makeTensor(alloc, &[_]usize{1});
+    seed.setMany(&[_]f32{1.0});
+    try graph.gradients.put(loss, seed);
+
+    var i = graph.nodes.items.len;
+    while (i > 0) {
+        i -= 1;
+        const node = graph.nodes.items[i];
+        const grad_out = graph.gradients.get(NodeId{ .idx = i }).?;
+
+        try graph.backwardOn(alloc, node, grad_out);
+    }
+}
+
+pub fn backwardOn(graph: *Graph, alloc: Allocator, node: Node, grad: Tensor) !void {
+    switch (node.ty) {
+        .linear => |l| {
+            const W = graph.cached_outputs.get(l.W).?;
+            const x = graph.cached_outputs.get(l.x).?;
+
+            var x_transpose = try x.transpose(alloc);
+            defer x_transpose.deinit(alloc);
+
+            const dW = try grad.matmul(x_transpose, alloc);
+            const dx = try W.transpose(alloc).matmul(grad, alloc);
+            const db = try grad.clone(alloc);
+
+            try graph.accumulateGrad(alloc, l.W, dW);
+            try graph.accumulateGrad(alloc, l.x, dx);
+            try graph.accumulateGrad(alloc, l.b, db);
+        },
+    }
 }
 
 pub fn compile(graph: *Graph, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
-    _ = graph;
-    _ = alloc;
-    _ = instr;
-}
-
-pub fn backwardCompile(graph: *Graph, alloc: Allocator, instr: *std.ArrayList(Instruction)) !void {
     _ = graph;
     _ = alloc;
     _ = instr;
