@@ -1,6 +1,4 @@
 //! The core computation graph architecture
-//!
-//! pub fn output()
 
 const std = @import("std");
 const Allocator = std.mem.Allocator;
@@ -8,6 +6,7 @@ const Tensor = @import("matstack").Tensor;
 
 const Node = @import("node.zig");
 const NodeId = Node.NodeId;
+const NodeType = Node.NodeType;
 
 nodes: std.ArrayList(Node) = .empty,
 inputs: std.ArrayList(?Tensor) = .empty,
@@ -48,12 +47,20 @@ pub fn output(graph: *Graph, alloc: Allocator, n: NodeId) !void {
     try graph.outputs.append(alloc, n);
 }
 
-pub fn linear(graph: *Graph, alloc: Allocator, W: NodeId, x: NodeId, b: NodeId) !NodeId {
-    _ = graph;
-    _ = alloc;
-    _ = W;
-    _ = x;
-    _ = b;
+pub fn linear(
+    graph: *Graph,
+    alloc: Allocator,
+    W: NodeId,
+    x: NodeId,
+    b: NodeId,
+) !NodeId {
+    const node_type: NodeType = .{ .operation = .{
+        .linear = .{ .W = W, .x = x, .b = b },
+    } };
+
+    return try graph.nodes.append(alloc, .{
+        .ty = .{ .operation = node_type },
+    });
 }
 
 test {
