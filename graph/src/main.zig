@@ -44,11 +44,11 @@ pub fn main(init: std.process.Init) !void {
     const J = try graph.add(alloc, L, S);
 
     var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    x_tensor.randomize(getRand(init.io));
+    x_tensor.setMany(&[_]f32{ 0, 1 });
     try graph.loadInput(alloc, x, x_tensor);
 
     var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    y_tensor.randomize(getRand(init.io));
+    y_tensor.setMany(&[_]f32{ 1, 0 });
     try graph.loadInput(alloc, y, y_tensor);
 
     var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 2 });
