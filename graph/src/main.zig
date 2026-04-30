@@ -2,6 +2,21 @@ const std = @import("std");
 const Graph = @import("graph.zig");
 const Tensor = @import("matstack").Tensor;
 
+var prng: ?std.Random.DefaultPrng = null;
+
+fn getRand(io: std.Io) std.Random {
+    if (prng) |*r| {
+        return r.random();
+    } else {
+        prng = .init(blk: {
+            var seed: u64 = undefined;
+            io.random(std.mem.asBytes(&seed));
+            break :blk seed;
+        });
+        return prng.?.random();
+    }
+}
+
 pub fn main(init: std.process.Init) !void {
     const alloc = init.gpa;
 
@@ -29,33 +44,31 @@ pub fn main(init: std.process.Init) !void {
     const J = try graph.add(alloc, L, S);
 
     var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    x_tensor.setMany(&[_]f32{ -10, 1 });
+    x_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, x, x_tensor);
 
     var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    y_tensor.setMany(&[_]f32{ 10, 5 });
+    y_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, y, y_tensor);
 
     var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 2 });
-    W_tensor.setMany(&[_]f32{ 1, 0, 0, 1, 0, 0 });
+    W_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, W, W_tensor);
 
     var M_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
-    M_tensor.setMany(&[_]f32{ 0, -1, 2, 1, 3, -5 });
+    M_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, M, M_tensor);
 
     var b_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
-    b_tensor.setMany(&[_]f32{ 1, 2, 3 });
+    b_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, b, b_tensor);
 
     var c_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    c_tensor.setMany(&[_]f32{ -10, 10 });
+    c_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, c, c_tensor);
 
     var res = try graph.eval(alloc, J);
     defer res.deinit(alloc);
-
-    try std.testing.expectApproxEqAbs(res.data[0], 145.42, 1e-4);
 
     try graph.backward(alloc, J);
 }

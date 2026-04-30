@@ -123,17 +123,13 @@ pub const VmIR = struct {
             },
 
             .rand_tensor => |shape| {
-                const tensor = try matstack.Tensor.makeTensor(
+                var tensor = try matstack.Tensor.makeTensor(
                     alloc,
                     shape.items[0..shape.items.len],
                 );
 
-                var rand = getRand(io);
-
-                for (tensor.data) |*val| {
-                    const r = rand.float(f32);
-                    val.* = r;
-                }
+                const rand = getRand(io);
+                tensor.randomize(rand);
 
                 try self.tensors.append(alloc, tensor);
 

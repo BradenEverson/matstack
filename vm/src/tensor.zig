@@ -5,6 +5,21 @@ const Allocator = std.mem.Allocator;
 
 const Tensor = @This();
 
+var prng: ?std.Random.DefaultPrng = null;
+
+fn getRand(io: std.Io) std.Random {
+    if (prng) |*r| {
+        return r.random();
+    } else {
+        prng = .init(blk: {
+            var seed: u64 = undefined;
+            io.random(std.mem.asBytes(&seed));
+            break :blk seed;
+        });
+        return prng.?.random();
+    }
+}
+
 pub const TensorError = error{
     InvalidShapeForOp,
     OperandSizesDoNotAgree,
@@ -284,6 +299,13 @@ pub fn makeTensor(alloc: Allocator, shape: []const usize) !Tensor {
         .shape = shapeOwned,
         .strides = strides,
     };
+}
+
+pub fn randomize(tensor: *Tensor, rand: std.Random) void {
+    for (tensor.data) |*val| {
+        const r = rand.float(f32);
+        val.* = r;
+    }
 }
 
 pub fn clone(from: *const Tensor, alloc: Allocator) !Tensor {
