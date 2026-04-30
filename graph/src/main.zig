@@ -43,19 +43,19 @@ pub fn main(init: std.process.Init) !void {
     const S = try graph.add(alloc, S1, S2);
     const J = try graph.add(alloc, L, S);
 
-    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    x_tensor.setMany(&[_]f32{ 0, 1 });
+    var x_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 1, 10 });
+    x_tensor.setMany(&[_]f32{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });
     try graph.loadInput(alloc, x, x_tensor);
 
-    var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
-    y_tensor.setMany(&[_]f32{ 1, 0 });
+    var y_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 1, 10 });
+    y_tensor.setMany(&[_]f32{ 1, 4, 9, 16, 25, 36, 49, 64, 81, 100 });
     try graph.loadInput(alloc, y, y_tensor);
 
-    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 2 });
+    var W_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 3, 1 });
     W_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, W, W_tensor);
 
-    var M_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 3 });
+    var M_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 1, 3 });
     M_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, M, M_tensor);
 
@@ -63,12 +63,14 @@ pub fn main(init: std.process.Init) !void {
     b_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, b, b_tensor);
 
-    var c_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 2, 1 });
+    var c_tensor: Tensor = try .makeTensor(alloc, &[2]usize{ 1, 1 });
     c_tensor.randomize(getRand(init.io));
     try graph.loadInput(alloc, c, c_tensor);
 
     var res = try graph.eval(alloc, J);
     defer res.deinit(alloc);
+
+    std.debug.print("{}\n", .{res});
 
     try graph.backward(alloc, J);
 }
