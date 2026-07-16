@@ -1,5 +1,4 @@
-# A Language, VM, and HDL Architecture for a Toy Tensor Processesing Machine!!
-
+# A Language, VM, and HDL Architecture for a Toy Tensor Processesing Machine! 
 Yeah, that really says it all, more info in each subdirectory :)
 
 This project is split up between the virtual machine runtime, actual hardware implementation, and the language that defines the bytecode for both. 
